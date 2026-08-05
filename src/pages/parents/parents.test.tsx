@@ -35,15 +35,22 @@ describe('ParentsPage — rendering and stats', () => {
   })
 })
 
-describe('ParentsPage — Invite Parent button is a stub', () => {
-  it('shows a success toast but does not add a row (known UI stub)', async () => {
+describe('ParentsPage — Invite Parent', () => {
+  it('creates a new parent scoped to the current school, links a child, and adds it to the list', async () => {
     const user = userEvent.setup()
     render(<ParentsPage />)
     const before = mockParents.filter((p) => p.schoolId === schoolId()).length
 
     await user.click(screen.getByRole('button', { name: /invite parent/i }))
+    await user.type(screen.getByLabelText(/full name/i), 'Test Automation Parent')
+    await user.type(screen.getByLabelText(/email/i), 'test.parent@example.com')
+    await user.click(screen.getByRole('combobox', { name: /child/i }))
+    const option = (await screen.findAllByRole('option'))[0]
+    await user.click(option)
+    await user.click(screen.getByRole('button', { name: /send invite/i }))
 
-    expect(screen.getByText('Total Parents', { selector: 'p.text-muted-foreground' }).nextElementSibling).toHaveTextContent(formatNumber(before))
+    expect(await screen.findByText('Test Automation Parent')).toBeInTheDocument()
+    expect(screen.getByText('Total Parents', { selector: 'p.text-muted-foreground' }).nextElementSibling).toHaveTextContent(formatNumber(before + 1))
   })
 })
 

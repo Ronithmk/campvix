@@ -53,6 +53,22 @@ describe('EventsPage', () => {
     expect(screen.getByText(String(schoolEvents.length - 1))).toBeInTheDocument()
   })
 
+  it('creates a new event scoped to the current school and adds it to the list', async () => {
+    const user = userEvent.setup()
+    render(<EventsPage />)
+    const before = eventsFor(schools[0].id).length
+
+    await user.click(screen.getByRole('button', { name: /create event/i }))
+    await user.type(screen.getByLabelText(/event title/i), 'QA Automation Fest')
+    await user.click(screen.getByRole('combobox', { name: /type/i }))
+    await user.click(await screen.findByRole('option', { name: /^sports$/i }))
+    await user.type(screen.getByLabelText(/location/i), 'Sports Ground')
+    await user.click(screen.getByRole('button', { name: /save event/i }))
+
+    expect(await screen.findByText('QA Automation Fest')).toBeInTheDocument()
+    expect(screen.getByText(String(before + 1))).toBeInTheDocument()
+  })
+
   it('does not leak one school\'s events into another school\'s view after switching schools', () => {
     // All schools share the same 8 event titles (only ids/dates differ), so we
     // verify isolation via row count rather than title text: a broken schoolId

@@ -62,6 +62,29 @@ describe('InventoryPage', () => {
     expect(screen.queryByText(other.name)).not.toBeInTheDocument()
   })
 
+  it('adds a new item scoped to the current school', async () => {
+    const user = userEvent.setup()
+    useAuthStore.getState().loginAsRole('administrator')
+    render(<InventoryPage />)
+
+    await user.click(screen.getByRole('button', { name: /add item/i }))
+    const dialog = screen.getByRole('dialog')
+
+    await user.type(screen.getByLabelText(/item name/i), 'Automated Test Kits')
+    await user.click(within(dialog).getByRole('combobox', { name: /category/i }))
+    await user.click(await screen.findByRole('option', { name: /^electronics$/i }))
+    const quantityInput = screen.getByLabelText(/quantity/i)
+    await user.clear(quantityInput)
+    await user.type(quantityInput, '20')
+    const unitInput = screen.getByLabelText(/^unit$/i)
+    await user.clear(unitInput)
+    await user.type(unitInput, 'kits')
+    await user.click(within(dialog).getByRole('button', { name: /^add item$/i }))
+
+    expect(await screen.findByText('Automated Test Kits')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
   it('removes an item through the row action + confirm dialog', async () => {
     const user = userEvent.setup()
     useAuthStore.getState().loginAsRole('administrator')

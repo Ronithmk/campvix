@@ -60,24 +60,36 @@ describe('EmailTemplatesPage', () => {
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
+  it('creates a new template scoped to the current school and adds it to the list', async () => {
+    const user = userEvent.setup()
+    render(<EmailTemplatesPage />)
+
+    await user.click(screen.getByRole('button', { name: /new template/i }))
+    const dialog = await screen.findByRole('dialog')
+    await user.type(within(dialog).getByLabelText(/template name/i), 'QA Welcome Email')
+    await user.type(within(dialog).getByLabelText(/subject line/i), 'Welcome to QA')
+    await user.click(within(dialog).getByRole('combobox', { name: /category/i }))
+    await user.click(await screen.findByRole('option', { name: 'Admission' }))
+    await user.click(within(dialog).getByRole('button', { name: /create template/i }))
+
+    expect(await screen.findByText('QA Welcome Email')).toBeInTheDocument()
+  })
+
   it('re-scopes the template list to the newly active school (multi-tenant isolation)', () => {
-    // Template names come from a fixed template list shared by every school
-    // (TEMPLATE_DEFS in mock/platform.ts), so the same name legitimately appears
-    // for every school — it's the sent-count/last-edited on each card that's
-    // school-specific. We assert on that card fingerprint instead of on name-presence.
     useAuthStore.setState({ schoolId: schools[0].id })
     const { rerender } = render(<EmailTemplatesPage />)
     const schoolATemplates = schoolTemplates(schools[0].id)
     const targetName = schoolATemplates[0].name
-    const cardFingerprintBefore = screen.getByText(targetName).closest('div')!.parentElement!.textContent
+    expect(screen.getByText(targetName)).toBeInTheDocument()
 
     useAuthStore.setState({ schoolId: schools[1].id })
     rerender(<EmailTemplatesPage />)
 
+    // Template names are now school-specific (prefixed with the school's short
+    // name), so School A's template name genuinely disappears from School B's view.
+    expect(screen.queryByText(targetName)).not.toBeInTheDocument()
     const schoolBTemplates = schoolTemplates(schools[1].id)
-    expect(schoolBTemplates).not.toEqual(schoolATemplates)
-    const cardFingerprintAfter = screen.getByText(targetName).closest('div')!.parentElement!.textContent
-    expect(cardFingerprintAfter).not.toBe(cardFingerprintBefore)
-    expect(schoolTemplates(schools[1].id)).toHaveLength(schoolATemplates.length)
+    expect(screen.getByText(schoolBTemplates[0].name)).toBeInTheDocument()
+    expect(schoolBTemplates).toHaveLength(schoolATemplates.length)
   })
 })

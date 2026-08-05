@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import AlumniPage from './alumni'
 import { useAuthStore } from '@/store/auth-store'
@@ -85,6 +85,23 @@ describe('AlumniPage', () => {
     await user.click(await screen.findByRole('button', { name: /^delete$/i }))
 
     expect(screen.queryByText(target.name)).not.toBeInTheDocument()
+  })
+
+  it('invites a new alumnus scoped to the current school and adds it to the list', async () => {
+    const user = userEvent.setup()
+    render(<AlumniPage />)
+
+    await user.click(screen.getByRole('button', { name: /invite alumni/i }))
+    const dialog = await screen.findByRole('dialog')
+    await user.type(within(dialog).getByLabelText(/full name/i), 'QA Test Alum')
+    await user.clear(within(dialog).getByLabelText(/graduation year/i))
+    await user.type(within(dialog).getByLabelText(/graduation year/i), '2020')
+    await user.type(within(dialog).getByLabelText(/current role/i), 'QA Engineer')
+    await user.type(within(dialog).getByLabelText(/company/i), 'Anthropic')
+    await user.type(within(dialog).getByLabelText(/email/i), 'qa.alum@example.com')
+    await user.click(within(dialog).getByRole('button', { name: /send invitation/i }))
+
+    expect(await screen.findByText('QA Test Alum')).toBeInTheDocument()
   })
 
   it('does not show alumni from one school when viewing another (multi-tenant isolation)', () => {

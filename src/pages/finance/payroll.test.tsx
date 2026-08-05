@@ -19,6 +19,7 @@ const schoolPayroll = payrollRecords.filter((p) => p.schoolId === school.id)
 const totalNet = schoolPayroll.reduce((sum, p) => sum + p.netPay, 0)
 const paid = schoolPayroll.filter((p) => p.status === 'paid').length
 const pending = schoolPayroll.filter((p) => p.status !== 'paid').length
+const pendingOnly = schoolPayroll.filter((p) => p.status === 'pending').length
 
 // The Employee cell renders an Avatar first (whose AvatarFallback is itself a
 // <span> of initials), so scope inside the flex-col wrapper to skip it and
@@ -74,6 +75,52 @@ describe('PayrollPage', () => {
 
     expect(screen.getByText(first)).toBeInTheDocument()
     expect(screen.queryByText(second)).not.toBeInTheDocument()
+  })
+
+  it('also filters by employee ID, matching the search box placeholder', async () => {
+    const user = userEvent.setup()
+    useAuthStore.getState().loginAsRole('administrator')
+    render(<PayrollPage />)
+
+    const rowsBefore = screen.getAllByRole('row').slice(1)
+    const targetId = employeeIdOf(rowsBefore[0])!
+    const otherName = employeeNameOf(rowsBefore[1])!
+
+    await user.type(screen.getByPlaceholderText(/search employees/i), targetId)
+
+    expect(screen.getByText(targetId)).toBeInTheDocument()
+    expect(screen.queryByText(otherName)).not.toBeInTheDocument()
+  })
+
+  it('transitions pending records to processing when Run Payroll is clicked', async () => {
+    expect(pendingOnly).toBeGreaterThan(0)
+    const user = userEvent.setup()
+    useAuthStore.getState().loginAsRole('administrator')
+    render(<PayrollPage />)
+
+    await user.click(screen.getAllByRole('combobox')[0])
+    await user.click(await screen.findByRole('option', { name: /^pending$/i }))
+    expect(screen.getAllByRole('row').length - 1).toBe(Math.min(pendingOnly, 10))
+
+    await user.click(screen.getAllByRole('combobox')[0])
+    await user.click(await screen.findByRole('option', { name: /^all status$/i }))
+
+    await user.click(screen.getByRole('button', { name: /run payroll/i }))
+
+    await user.click(screen.getAllByRole('combobox')[0])
+    await user.click(await screen.findByRole('option', { name: /^pending$/i }))
+    expect(await screen.findByText(/no results found/i)).toBeInTheDocument()
+  })
+
+  it('disables Run Payroll once there are no pending records left', async () => {
+    expect(pendingOnly).toBeGreaterThan(0)
+    const user = userEvent.setup()
+    useAuthStore.getState().loginAsRole('administrator')
+    render(<PayrollPage />)
+
+    expect(screen.getByRole('button', { name: /run payroll/i })).not.toBeDisabled()
+    await user.click(screen.getByRole('button', { name: /run payroll/i }))
+    expect(screen.getByRole('button', { name: /run payroll/i })).toBeDisabled()
   })
 
   it('removes a payroll record through the row action + confirm dialog', async () => {

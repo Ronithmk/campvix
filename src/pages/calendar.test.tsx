@@ -48,6 +48,20 @@ describe('CalendarPage', () => {
     expect(screen.queryByText(target.title)).not.toBeInTheDocument()
   })
 
+  it('creates a new event scoped to the current school and adds it to the list', async () => {
+    const user = userEvent.setup()
+    render(<CalendarPage />)
+
+    await user.click(screen.getByRole('button', { name: /new event/i }))
+    await user.type(screen.getByLabelText(/event title/i), 'QA Automation Drill')
+    await user.click(screen.getByRole('combobox', { name: /type/i }))
+    await user.click(await screen.findByRole('option', { name: /meeting/i }))
+    await user.type(screen.getByLabelText(/location/i), 'Room 204')
+    await user.click(screen.getByRole('button', { name: /create event/i }))
+
+    expect(await screen.findByText('QA Automation Drill')).toBeInTheDocument()
+  })
+
   it('does not leak one school\'s events into another school\'s view after switching schools', () => {
     // Every school shares the same 8 event titles (only ids/dates/schoolId differ),
     // so isolation is verified by row *count* rather than title text: if the

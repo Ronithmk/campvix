@@ -21,12 +21,7 @@ describe('AnalyticsPage', () => {
     render(<AnalyticsPage />)
     const schoolStudents = students.filter((s) => s.schoolId === schools[0].id)
     const schoolFeeRecords = feeRecords.filter((f) => f.schoolId === schools[0].id)
-    // NOTE: the component computes the "At-Risk Students" stat from the same
-    // array it slices to 6 for the list below, so the stat is capped at 6 even
-    // when the true at-risk count is much higher (pre-existing bug, not fixed
-    // here — see atRiskStudents in analytics.tsx). We assert the actual
-    // (capped) rendered value rather than the true filtered count.
-    const atRisk = schoolStudents.filter((s) => s.attendancePercent < 75 || s.gpa < 6.5).slice(0, 6)
+    const atRiskCount = schoolStudents.filter((s) => s.attendancePercent < 75 || s.gpa < 6.5).length
     const totalRevenue = schoolFeeRecords.reduce((sum, f) => sum + f.paidAmount, 0)
     const revenuePerStudent = schoolStudents.length ? Math.round(totalRevenue / schoolStudents.length) : 0
 
@@ -34,7 +29,7 @@ describe('AnalyticsPage', () => {
     expect(screen.getByText('Total Enrollment')).toBeInTheDocument()
     expect(screen.getByText(formatNumber(schoolStudents.length))).toBeInTheDocument()
     expect(screen.getByText('At-Risk Students')).toBeInTheDocument()
-    expect(screen.getByText(String(atRisk.length))).toBeInTheDocument()
+    expect(screen.getByText(String(atRiskCount))).toBeInTheDocument()
     expect(screen.getByText('Revenue per Student')).toBeInTheDocument()
     expect(screen.getByText(formatCurrency(revenuePerStudent))).toBeInTheDocument()
   })

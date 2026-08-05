@@ -20,7 +20,7 @@ function getColumns(onDelete: (payment: Payment) => void): ColumnDef<Payment, un
   return [
     {
       id: 'reference',
-      accessorKey: 'reference',
+      accessorFn: (row) => `${row.reference} ${row.studentName}`,
       header: 'Reference',
       cell: ({ row }) => (
         <div className="flex flex-col">

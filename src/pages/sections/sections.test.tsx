@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import SectionsPage from './sections'
 import { useAuthStore } from '@/store/auth-store'
 import { usePermissionsStore } from '@/store/permissions-store'
@@ -53,5 +54,26 @@ describe('SectionsPage — rendering and stats', () => {
     const gradeTitle = screen.getByText(grade)
     const card = gradeTitle.closest('[data-slot="card"]') as HTMLElement
     expect(within(card).getByText(`${sections.length} sections`)).toBeInTheDocument()
+  })
+})
+
+describe('SectionsPage — creates a new section', () => {
+  it('adds a new grade+section combination and updates the section stats', async () => {
+    const user = userEvent.setup()
+    render(<SectionsPage />)
+    const { classes: before } = computeExpected()
+
+    await user.click(screen.getByRole('button', { name: 'Add Section' }))
+    await user.type(screen.getByLabelText(/grade/i), 'Grade 11')
+    await user.type(screen.getByLabelText(/section letter/i), 'C')
+    const strengthInput = screen.getByLabelText(/starting strength/i)
+    await user.clear(strengthInput)
+    await user.type(strengthInput, '25')
+    await user.click(screen.getByRole('button', { name: 'Add section' }))
+
+    const gradeCard = (await screen.findByText('Grade 11')).closest('[data-slot="card"]') as HTMLElement
+    expect(within(gradeCard).getByText('1 sections')).toBeInTheDocument()
+    expect(within(gradeCard).getByText('25')).toBeInTheDocument()
+    expect(screen.getByText('Total Sections', { selector: 'p.text-muted-foreground' }).nextElementSibling).toHaveTextContent(String(before.length + 1))
   })
 })

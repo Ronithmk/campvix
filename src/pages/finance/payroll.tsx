@@ -20,7 +20,7 @@ function getColumns(onDelete: (record: PayrollRecord) => void): ColumnDef<Payrol
   return [
     {
       id: 'name',
-      accessorKey: 'name',
+      accessorFn: (row) => `${row.name} ${row.employeeId}`,
       header: 'Employee',
       cell: ({ row }) => {
         const p = row.original
@@ -76,6 +76,7 @@ export default function PayrollPage() {
   const totalNet = schoolPayroll.reduce((sum, p) => sum + p.netPay, 0)
   const paid = schoolPayroll.filter((p) => p.status === 'paid').length
   const pending = schoolPayroll.filter((p) => p.status !== 'paid').length
+  const pendingCount = schoolPayroll.filter((p) => p.status === 'pending').length
 
   const columns = useMemo(() => getColumns((record) => setPendingDelete(record)), [])
 
@@ -86,13 +87,19 @@ export default function PayrollPage() {
     setPendingDelete(null)
   }
 
+  function handleRunPayroll() {
+    if (pendingCount === 0) return
+    setPayrollRecords((prev) => prev.map((p) => (p.schoolId === school.id && p.status === 'pending' ? { ...p, status: 'processing' } : p)))
+    toast.success('Payroll run initiated for August 2026')
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Payroll"
         description={`Run payroll for teachers and staff at ${school.name}.`}
         actions={
-          <Button onClick={() => toast.success('Payroll run initiated for August 2026')}>
+          <Button onClick={handleRunPayroll} disabled={pendingCount === 0}>
             <Banknote className="size-4" /> Run Payroll
           </Button>
         }

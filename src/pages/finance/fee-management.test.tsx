@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router-dom'
 import FeeManagementPage from './fee-management'
 import { useAuthStore } from '@/store/auth-store'
 import { usePermissionsStore } from '@/store/permissions-store'
@@ -27,17 +28,29 @@ const pendingAmount = schoolFees.filter((f) => f.status === 'pending' || f.statu
 const overdueCount = schoolFees.filter((f) => f.status === 'overdue').length
 
 function invoiceNoOf(row: HTMLElement) {
-  return row.querySelector('td:first-child span')?.textContent ?? undefined
+  return row.querySelectorAll('td:first-child span')[0]?.textContent ?? undefined
+}
+
+function studentNameOf(row: HTMLElement) {
+  return row.querySelectorAll('td:first-child span')[1]?.textContent ?? undefined
 }
 
 function statValue(label: string) {
   return screen.getByText(label, { selector: 'p' }).nextElementSibling?.textContent
 }
 
+function renderPage() {
+  return render(
+    <MemoryRouter>
+      <FeeManagementPage />
+    </MemoryRouter>,
+  )
+}
+
 describe('FeeManagementPage', () => {
   it('renders for administrator with stat cards matching the underlying mock data', () => {
     useAuthStore.getState().loginAsRole('administrator')
-    render(<FeeManagementPage />)
+    renderPage()
 
     expect(screen.getByRole('heading', { name: 'Fee Management' })).toBeInTheDocument()
     expect(statValue('Total Billed')).toBe(formatCurrency(totalAmount))
@@ -46,9 +59,17 @@ describe('FeeManagementPage', () => {
     expect(statValue('Overdue Invoices')).toBe(String(overdueCount))
   })
 
+  it('links Create Invoice to the real invoices page instead of a stub toast', () => {
+    useAuthStore.getState().loginAsRole('administrator')
+    renderPage()
+
+    const link = screen.getByRole('link', { name: /create invoice/i })
+    expect(link).toHaveAttribute('href', '/app/finance/invoices')
+  })
+
   it('renders the fee columns from getFeeColumns via DataTable', () => {
     useAuthStore.getState().loginAsRole('administrator')
-    render(<FeeManagementPage />)
+    renderPage()
 
     expect(screen.getByRole('columnheader', { name: 'Invoice' })).toBeInTheDocument()
     expect(screen.getByRole('columnheader', { name: 'Category' })).toBeInTheDocument()
@@ -62,7 +83,7 @@ describe('FeeManagementPage', () => {
     expect(overdueCount).toBeGreaterThan(0)
     const user = userEvent.setup()
     useAuthStore.getState().loginAsRole('administrator')
-    render(<FeeManagementPage />)
+    renderPage()
 
     await user.click(screen.getAllByRole('combobox')[0])
     await user.click(await screen.findByRole('option', { name: /^overdue$/i }))
@@ -77,7 +98,7 @@ describe('FeeManagementPage', () => {
   it('actually filters rows via the search box (not just cosmetic)', async () => {
     const user = userEvent.setup()
     useAuthStore.getState().loginAsRole('administrator')
-    render(<FeeManagementPage />)
+    renderPage()
 
     const rowsBefore = screen.getAllByRole('row').slice(1)
     const first = invoiceNoOf(rowsBefore[0])!
@@ -90,10 +111,25 @@ describe('FeeManagementPage', () => {
     expect(screen.queryByText(second)).not.toBeInTheDocument()
   })
 
+  it('also filters by student name, matching the search box placeholder', async () => {
+    const user = userEvent.setup()
+    useAuthStore.getState().loginAsRole('administrator')
+    renderPage()
+
+    const rowsBefore = screen.getAllByRole('row').slice(1)
+    const targetStudent = studentNameOf(rowsBefore[0])!
+    const otherInvoice = invoiceNoOf(rowsBefore[1])!
+
+    await user.type(screen.getByPlaceholderText(/search by invoice number or student/i), targetStudent)
+
+    expect(screen.getByText(targetStudent)).toBeInTheDocument()
+    expect(screen.queryByText(otherInvoice)).not.toBeInTheDocument()
+  })
+
   it('voids (deletes) an invoice through the row action + confirm dialog, and removes it from the table', async () => {
     const user = userEvent.setup()
     useAuthStore.getState().loginAsRole('administrator')
-    render(<FeeManagementPage />)
+    renderPage()
 
     const targetRow = screen.getAllByRole('row')[1]
     const invoiceNo = invoiceNoOf(targetRow)!

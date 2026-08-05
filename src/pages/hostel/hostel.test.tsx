@@ -54,6 +54,30 @@ describe('HostelPage', () => {
     expect(screen.getAllByText(/^Room /).length).toBe(expectedCount)
   })
 
+  it('adds a new room scoped to the current school', async () => {
+    const user = userEvent.setup()
+    useAuthStore.getState().loginAsRole('administrator')
+    render(<HostelPage />)
+
+    await user.click(screen.getByRole('button', { name: /add room/i }))
+    const dialog = screen.getByRole('dialog')
+
+    await user.type(screen.getByLabelText(/room number/i), 'Z999')
+    await user.type(screen.getByLabelText(/^block$/i), 'Zenith')
+    const floorInput = screen.getByLabelText(/^floor$/i)
+    await user.clear(floorInput)
+    await user.type(floorInput, '2')
+    const capacityInput = screen.getByLabelText(/capacity/i)
+    await user.clear(capacityInput)
+    await user.type(capacityInput, '4')
+    await user.click(within(dialog).getByRole('combobox', { name: /room type/i }))
+    await user.click(await screen.findByRole('option', { name: /^dormitory$/i }))
+    await user.click(within(dialog).getByRole('button', { name: /^add room$/i }))
+
+    expect(await screen.findByText('Room Z999')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
   it('deletes a room after confirming the delete dialog, removing its card', async () => {
     const user = userEvent.setup()
     useAuthStore.getState().loginAsRole('administrator')

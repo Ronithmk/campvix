@@ -42,6 +42,27 @@ describe('TransportPage', () => {
     }
   })
 
+  it('adds a new route scoped to the current school', async () => {
+    const user = userEvent.setup()
+    useAuthStore.getState().loginAsRole('administrator')
+    render(<TransportPage />)
+
+    await user.click(screen.getByRole('button', { name: /add route/i }))
+    const dialog = screen.getByRole('dialog')
+
+    await user.type(screen.getByLabelText(/route name/i), 'Route Z - Automated')
+    await user.type(screen.getByLabelText(/vehicle number/i), 'KA-09-ZZ-9999')
+    await user.type(screen.getByLabelText(/driver name/i), 'QA Bot')
+    const capacityInput = screen.getByLabelText(/capacity/i)
+    await user.clear(capacityInput)
+    await user.type(capacityInput, '45')
+    await user.click(within(dialog).getByRole('button', { name: /^add route$/i }))
+
+    expect(await screen.findByText('Route Z - Automated')).toBeInTheDocument()
+    expect(screen.getByText('QA Bot')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
   it('deletes a route after confirming the delete dialog, removing its card', async () => {
     const user = userEvent.setup()
     useAuthStore.getState().loginAsRole('administrator')

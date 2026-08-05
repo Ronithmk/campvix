@@ -1,25 +1,65 @@
 import { useMemo, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
 import { toast } from 'sonner'
-import { School, Users, DoorOpen, Plus, Trash2 } from 'lucide-react'
+import { School, Users, DoorOpen, Plus, Trash2, Loader2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { StatCard } from '@/components/shared/stat-card'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { DeleteConfirm } from '@/components/shared/delete-confirm'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { classes as mockClasses } from '@/mock/classes'
 import { teachers } from '@/mock/teachers'
-import { formatNumber, initials } from '@/lib/utils'
+import { formatNumber, initials, sleep } from '@/lib/utils'
 import type { SchoolClass } from '@/types'
 import { useActiveSchool } from '@/hooks/use-active-school'
+
+const classSchema = z.object({
+  grade: z.string().min(2, 'Grade is required'),
+  section: z
+    .string()
+    .min(1, 'Section is required')
+    .max(2, 'Use a short section label'),
+  room: z.string().min(1, 'Room is required'),
+  classTeacherId: z.string().min(1, 'Select a class teacher'),
+})
+
+type ClassValues = z.infer<typeof classSchema>
 
 export default function ClassesPage() {
   const school = useActiveSchool()
   const [classes, setClasses] = useState<SchoolClass[]>(mockClasses)
+  const [dialogOpen, setDialogOpen] = useState(false)
 
   const schoolClasses = useMemo(() => classes.filter((c) => c.schoolId === school.id), [classes, school.id])
+  const schoolTeachers = useMemo(() => teachers.filter((t) => t.schoolId === school.id), [school.id])
   const totalStrength = schoolClasses.reduce((sum, c) => sum + c.strength, 0)
   const avgStrength = schoolClasses.length ? Math.round(totalStrength / schoolClasses.length) : 0
+
+  const form = useForm<ClassValues>({ resolver: zodResolver(classSchema), defaultValues: { grade: '', section: '', room: '', classTeacherId: '' } })
+
+  async function onSubmit(values: ClassValues) {
+    await sleep(500)
+    const newClass: SchoolClass = {
+      id: `class-new-${Date.now()}`,
+      schoolId: school.id,
+      name: `${values.grade} - ${values.section}`,
+      sections: [values.section],
+      classTeacherId: values.classTeacherId,
+      strength: 0,
+      room: values.room,
+    }
+    setClasses((prev) => [newClass, ...prev])
+    toast.success(`${newClass.name} was created`)
+    setDialogOpen(false)
+    form.reset()
+  }
 
   function handleDelete(id: string, name: string) {
     setClasses((prev) => prev.filter((c) => c.id !== id))
@@ -32,9 +72,92 @@ export default function ClassesPage() {
         title="Classes"
         description={`Configure grades, class teachers, and room assignments at ${school.name}.`}
         actions={
-          <Button onClick={() => toast.success('Class created')}>
-            <Plus className="size-4" /> Add Class
-          </Button>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="size-4" /> Add Class
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add a new class</DialogTitle>
+                <DialogDescription>Set up a grade and section — you can enroll students into it afterwards.</DialogDescription>
+              </DialogHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
+                  <FormField
+                    control={form.control}
+                    name="grade"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Grade</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Grade 11" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="section"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Section</FormLabel>
+                        <FormControl>
+                          <Input placeholder="C" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="room"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Room</FormLabel>
+                        <FormControl>
+                          <Input placeholder="2B-210" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="classTeacherId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Class teacher</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select class teacher" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {schoolTeachers.map((t) => (
+                              <SelectItem key={t.id} value={t.id}>
+                                {t.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <DialogFooter>
+                    <Button type="submit" disabled={form.formState.isSubmitting}>
+                      {form.formState.isSubmitting && <Loader2 className="size-4 animate-spin" />}
+                      Add class
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
         }
       />
 

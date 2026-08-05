@@ -21,7 +21,11 @@ const avg = schoolPayments.length ? Math.round(total / schoolPayments.length) : 
 const upiShare = schoolPayments.length ? Math.round((schoolPayments.filter((p) => p.method === 'upi').length / schoolPayments.length) * 100) : 0
 
 function referenceOf(row: HTMLElement) {
-  return row.querySelector('td:first-child span')?.textContent ?? undefined
+  return row.querySelectorAll('td:first-child span')[0]?.textContent ?? undefined
+}
+
+function studentNameOf(row: HTMLElement) {
+  return row.querySelectorAll('td:first-child span')[1]?.textContent ?? undefined
 }
 
 function statValue(label: string) {
@@ -54,6 +58,21 @@ describe('PaymentsPage', () => {
 
     expect(screen.getByText(first)).toBeInTheDocument()
     expect(screen.queryByText(second)).not.toBeInTheDocument()
+  })
+
+  it('also filters by student name, matching the search box placeholder', async () => {
+    const user = userEvent.setup()
+    useAuthStore.getState().loginAsRole('administrator')
+    render(<PaymentsPage />)
+
+    const rowsBefore = screen.getAllByRole('row').slice(1)
+    const targetStudent = studentNameOf(rowsBefore[0])!
+    const otherReference = referenceOf(rowsBefore[1])!
+
+    await user.type(screen.getByPlaceholderText(/search by reference or student/i), targetStudent)
+
+    expect(screen.getByText(targetStudent)).toBeInTheDocument()
+    expect(screen.queryByText(otherReference)).not.toBeInTheDocument()
   })
 
   it('deletes a payment record through the row action + confirm dialog', async () => {

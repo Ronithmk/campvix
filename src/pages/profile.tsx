@@ -54,26 +54,26 @@ export default function ProfilePage() {
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-4 pb-6 sm:grid-cols-2">
           <div className="flex flex-col gap-1.5">
-            <Label>Full name</Label>
-            <Input defaultValue={name} />
+            <Label htmlFor="profile-name">Full name</Label>
+            <Input id="profile-name" defaultValue={name} />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label>Email address</Label>
+            <Label htmlFor="profile-email">Email address</Label>
             <div className="relative">
               <Mail className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input className="pl-9" defaultValue={email || 'you@campusflow.app'} />
+              <Input id="profile-email" className="pl-9" defaultValue={email || 'you@campusflow.app'} />
             </div>
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label>Phone number</Label>
+            <Label htmlFor="profile-phone">Phone number</Label>
             <div className="relative">
               <Phone className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input className="pl-9" defaultValue="+91 98765 43210" />
+              <Input id="profile-phone" className="pl-9" defaultValue="+91 98765 43210" />
             </div>
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label>Role</Label>
-            <Input disabled defaultValue={role ? ROLE_LABELS[role] : ''} />
+            <Label htmlFor="profile-role">Role</Label>
+            <Input id="profile-role" disabled defaultValue={role ? ROLE_LABELS[role] : ''} />
           </div>
         </CardContent>
       </Card>

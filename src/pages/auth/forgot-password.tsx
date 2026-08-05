@@ -54,12 +54,12 @@ export default function ForgotPasswordPage() {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Email address</FormLabel>
-                <FormControl>
-                  <div className="relative">
-                    <Mail className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                <div className="relative">
+                  <Mail className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <FormControl>
                     <Input placeholder="you@school.edu" className="pl-9" {...field} />
-                  </div>
-                </FormControl>
+                  </FormControl>
+                </div>
                 <FormMessage />
               </FormItem>
             )}

@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
 import { toast } from 'sonner'
-import { BookMarked, Library as LibraryIcon, AlertCircle, Plus, Trash2 } from 'lucide-react'
+import { BookMarked, Library as LibraryIcon, AlertCircle, Plus, Trash2, Loader2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { StatCard } from '@/components/shared/stat-card'
 import { Card, CardContent } from '@/components/ui/card'
@@ -10,16 +13,43 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { DeleteConfirm } from '@/components/shared/delete-confirm'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { libraryBooks as mockBooks, bookIssues as mockIssues } from '@/mock/library'
-import { formatDate, formatCurrency, initials } from '@/lib/utils'
-import type { BookIssue, LibraryBook } from '@/types'
+import { formatDate, formatCurrency, initials, sleep } from '@/lib/utils'
+import type { BookCategory, BookIssue, LibraryBook } from '@/types'
 import { useActiveSchool } from '@/hooks/use-active-school'
+
+const COVER_COLORS = ['#2563eb', '#059669', '#d97706', '#dc2626', '#7c3aed', '#0891b2', '#db2777']
+
+const CATEGORY_OPTIONS: { value: BookCategory; label: string }[] = [
+  { value: 'fiction', label: 'Fiction' },
+  { value: 'non_fiction', label: 'Non-fiction' },
+  { value: 'science', label: 'Science' },
+  { value: 'reference', label: 'Reference' },
+  { value: 'biography', label: 'Biography' },
+  { value: 'children', label: 'Children' },
+]
+
+const bookSchema = z.object({
+  title: z.string().min(2, 'Title is required'),
+  author: z.string().min(2, 'Author is required'),
+  category: z.enum(['fiction', 'non_fiction', 'science', 'reference', 'biography', 'children'], { required_error: 'Select a category' }),
+  totalCopies: z.coerce.number().min(1, 'Enter a valid number of copies'),
+})
+
+type BookValues = z.infer<typeof bookSchema>
 
 export default function LibraryPage() {
   const school = useActiveSchool()
   const [tab, setTab] = useState('catalog')
   const [libraryBooks, setLibraryBooks] = useState<LibraryBook[]>(mockBooks)
   const [bookIssues, setBookIssues] = useState<BookIssue[]>(mockIssues)
+  const [dialogOpen, setDialogOpen] = useState(false)
+
+  const form = useForm<BookValues>({ resolver: zodResolver(bookSchema), defaultValues: { title: '', author: '', category: 'fiction', totalCopies: 1 } })
 
   const schoolBooks = useMemo(() => libraryBooks.filter((b) => b.schoolId === school.id), [libraryBooks, school.id])
   const schoolIssues = useMemo(() => bookIssues.filter((i) => i.schoolId === school.id), [bookIssues, school.id])
@@ -38,15 +68,118 @@ export default function LibraryPage() {
     toast.success(`Issue record for ${title} removed`)
   }
 
+  async function onSubmit(values: BookValues) {
+    await sleep(500)
+    const newBook: LibraryBook = {
+      id: `book-new-${Date.now()}`,
+      schoolId: school.id,
+      title: values.title,
+      author: values.author,
+      isbn: `978-${Date.now()}`,
+      category: values.category,
+      coverColor: COVER_COLORS[schoolBooks.length % COVER_COLORS.length],
+      totalCopies: values.totalCopies,
+      availableCopies: values.totalCopies,
+      shelfLocation: 'Unassigned',
+    }
+    setLibraryBooks((prev) => [newBook, ...prev])
+    toast.success('Book added to catalog')
+    setDialogOpen(false)
+    form.reset()
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Library"
         description={`Catalog, issue, and track books at ${school.name}.`}
         actions={
-          <Button onClick={() => toast.success('Book added to catalog')}>
-            <Plus className="size-4" /> Add Book
-          </Button>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="size-4" /> Add Book
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add a book to the catalog</DialogTitle>
+                <DialogDescription>Add a new title to {school.name}'s library catalog.</DialogDescription>
+              </DialogHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
+                  <FormField
+                    control={form.control}
+                    name="title"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Title</FormLabel>
+                        <FormControl>
+                          <Input placeholder="The Wind in the Willows" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="author"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Author</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Kenneth Grahame" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="category"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Category</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select category" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {CATEGORY_OPTIONS.map((c) => (
+                              <SelectItem key={c.value} value={c.value}>
+                                {c.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="totalCopies"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Total copies</FormLabel>
+                        <FormControl>
+                          <Input type="number" min={1} {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <DialogFooter>
+                    <Button type="submit" disabled={form.formState.isSubmitting}>
+                      {form.formState.isSubmitting && <Loader2 className="size-4 animate-spin" />}
+                      Add book
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
         }
       />
 

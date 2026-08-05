@@ -49,15 +49,22 @@ describe('ExaminationsPage — filter', () => {
   })
 })
 
-describe('ExaminationsPage — Schedule Exam button is a stub', () => {
-  it('shows a success toast but does not add a row (known UI stub)', async () => {
+describe('ExaminationsPage — schedules a new exam', () => {
+  it('creates a new exam scoped to the current school and adds it to the table', async () => {
     const user = userEvent.setup()
     render(<ExaminationsPage />)
     const before = mockExams.filter((e) => e.schoolId === schoolId()).length
 
-    await user.click(screen.getByRole('button', { name: /schedule exam/i }))
+    await user.click(screen.getByRole('button', { name: 'Schedule Exam' }))
+    await user.type(screen.getByLabelText(/exam name/i), 'Test Automation Finals')
+    await user.click(screen.getByRole('combobox', { name: /subject/i }))
+    await user.click(await screen.findByRole('option', { name: /mathematics/i }))
+    await user.click(screen.getByRole('combobox', { name: /class/i }))
+    await user.click((await screen.findAllByRole('option'))[0])
+    await user.click(screen.getByRole('button', { name: 'Schedule exam' }))
 
-    expect(screen.getByText('Total Exams', { selector: 'p.text-muted-foreground' }).nextElementSibling).toHaveTextContent(String(before))
+    expect(await screen.findByText('Test Automation Finals')).toBeInTheDocument()
+    expect(screen.getByText('Total Exams', { selector: 'p.text-muted-foreground' }).nextElementSibling).toHaveTextContent(String(before + 1))
   })
 })
 

@@ -1,26 +1,69 @@
 import { useMemo, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
 import { toast } from 'sonner'
-import { BookMarked, CalendarDays, CheckCircle2, Plus, Trash2 } from 'lucide-react'
+import { BookMarked, CalendarDays, CheckCircle2, Plus, Trash2, Loader2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { StatCard } from '@/components/shared/stat-card'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { DeleteConfirm } from '@/components/shared/delete-confirm'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { homeworkEntries as mockHomework } from '@/mock/coursework'
 import { classes } from '@/mock/classes'
 import { subjects } from '@/mock/subjects'
-import { formatDate } from '@/lib/utils'
+import { formatDate, sleep } from '@/lib/utils'
 import type { HomeworkEntry } from '@/types'
 import { useActiveSchool } from '@/hooks/use-active-school'
+
+const homeworkSchema = z.object({
+  title: z.string().min(2, 'Title is required'),
+  description: z.string().min(2, 'Description is required'),
+  subjectId: z.string().min(1, 'Select a subject'),
+  classId: z.string().min(1, 'Select a class'),
+  date: z.string().min(1, 'Date is required'),
+})
+
+type HomeworkValues = z.infer<typeof homeworkSchema>
 
 export default function HomeworkPage() {
   const school = useActiveSchool()
   const [homeworkEntries, setHomeworkEntries] = useState<HomeworkEntry[]>(mockHomework)
+  const [dialogOpen, setDialogOpen] = useState(false)
 
   const schoolHomework = useMemo(() => homeworkEntries.filter((h) => h.schoolId === school.id), [homeworkEntries, school.id])
+  const schoolClasses = useMemo(() => classes.filter((c) => c.schoolId === school.id), [school.id])
   const avgCompletion = schoolHomework.length ? Math.round(schoolHomework.reduce((sum, h) => sum + h.completionPercent, 0) / schoolHomework.length) : 0
   const dueToday = schoolHomework.filter((h) => new Date(h.date).toDateString() === new Date().toDateString()).length
+
+  const form = useForm<HomeworkValues>({
+    resolver: zodResolver(homeworkSchema),
+    defaultValues: { title: '', description: '', subjectId: '', classId: '', date: new Date().toISOString().slice(0, 10) },
+  })
+
+  async function onSubmit(values: HomeworkValues) {
+    await sleep(500)
+    const newHomework: HomeworkEntry = {
+      id: `homework-new-${Date.now()}`,
+      schoolId: school.id,
+      subjectId: values.subjectId,
+      classId: values.classId,
+      title: values.title,
+      description: values.description,
+      date: new Date(values.date).toISOString(),
+      completionPercent: 0,
+    }
+    setHomeworkEntries((prev) => [newHomework, ...prev])
+    toast.success(`${newHomework.title} was assigned`)
+    setDialogOpen(false)
+    form.reset()
+  }
 
   function handleDelete(id: string, title: string) {
     setHomeworkEntries((prev) => prev.filter((h) => h.id !== id))
@@ -33,9 +76,116 @@ export default function HomeworkPage() {
         title="Homework"
         description={`Daily homework diary tracked across every class at ${school.name}.`}
         actions={
-          <Button onClick={() => toast.success('Homework assigned')}>
-            <Plus className="size-4" /> Assign Homework
-          </Button>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="size-4" /> Assign Homework
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Assign new homework</DialogTitle>
+                <DialogDescription>Add a homework entry to the diary for a class.</DialogDescription>
+              </DialogHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
+                  <FormField
+                    control={form.control}
+                    name="title"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Title</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Read Chapter 3 and summarize" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description</FormLabel>
+                        <FormControl>
+                          <Textarea placeholder="Details for students and parents" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="subjectId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Subject</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select subject" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {subjects.map((s) => (
+                              <SelectItem key={s.id} value={s.id}>
+                                {s.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="classId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Class</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select class" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {schoolClasses.map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                {c.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="date"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Date</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <DialogFooter>
+                    <Button type="submit" disabled={form.formState.isSubmitting}>
+                      {form.formState.isSubmitting && <Loader2 className="size-4 animate-spin" />}
+                      Assign homework
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
         }
       />
 

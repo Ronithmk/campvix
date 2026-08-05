@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
 import { toast } from 'sonner'
-import { Boxes, AlertTriangle, Package, Plus, MoreHorizontal, Trash2 } from 'lucide-react'
+import { Boxes, AlertTriangle, Package, Plus, MoreHorizontal, Trash2, Loader2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { StatCard } from '@/components/shared/stat-card'
 import { DataTable, exportToCsv } from '@/components/shared/data-table'
@@ -8,12 +11,33 @@ import { ConfirmDeleteDialog } from '@/components/shared/confirm-delete-dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { inventoryItems as mockInventory } from '@/mock/facilities'
-import { formatDate } from '@/lib/utils'
+import { formatDate, sleep } from '@/lib/utils'
 import type { LegacyColumnDef as ColumnDef } from '@tanstack/react-table/legacy'
-import type { InventoryItem } from '@/types'
+import type { InventoryCategory, InventoryItem } from '@/types'
 import { useActiveSchool } from '@/hooks/use-active-school'
+
+const CATEGORY_OPTIONS: { value: InventoryCategory; label: string }[] = [
+  { value: 'furniture', label: 'Furniture' },
+  { value: 'electronics', label: 'Electronics' },
+  { value: 'sports', label: 'Sports' },
+  { value: 'lab_equipment', label: 'Lab Equipment' },
+  { value: 'stationery', label: 'Stationery' },
+  { value: 'books', label: 'Books' },
+]
+
+const itemSchema = z.object({
+  name: z.string().min(2, 'Item name is required'),
+  category: z.enum(['furniture', 'electronics', 'sports', 'lab_equipment', 'stationery', 'books'], { required_error: 'Select a category' }),
+  quantity: z.coerce.number().min(1, 'Enter a valid quantity'),
+  unit: z.string().min(1, 'Unit is required'),
+})
+
+type ItemValues = z.infer<typeof itemSchema>
 
 function getColumns(onDelete: (item: InventoryItem) => void): ColumnDef<InventoryItem, unknown>[] {
   return [
@@ -72,6 +96,9 @@ export default function InventoryPage() {
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>(mockInventory)
   const [categoryFilter, setCategoryFilter] = useState('all')
   const [pendingDelete, setPendingDelete] = useState<InventoryItem | null>(null)
+  const [dialogOpen, setDialogOpen] = useState(false)
+
+  const form = useForm<ItemValues>({ resolver: zodResolver(itemSchema), defaultValues: { name: '', category: 'furniture', quantity: 1, unit: 'units' } })
 
   const schoolInventory = useMemo(() => inventoryItems.filter((i) => i.schoolId === school.id), [inventoryItems, school.id])
   const filtered = useMemo(() => schoolInventory.filter((i) => categoryFilter === 'all' || i.category === categoryFilter), [schoolInventory, categoryFilter])
@@ -88,15 +115,118 @@ export default function InventoryPage() {
     setPendingDelete(null)
   }
 
+  async function onSubmit(values: ItemValues) {
+    await sleep(500)
+    const newItem: InventoryItem = {
+      id: `inv-new-${Date.now()}`,
+      schoolId: school.id,
+      name: values.name,
+      category: values.category,
+      quantity: values.quantity,
+      minThreshold: Math.max(1, Math.floor(values.quantity * 0.2)),
+      unit: values.unit,
+      location: 'Main Store',
+      lastRestocked: new Date().toISOString(),
+      vendor: 'Not specified',
+    }
+    setInventoryItems((prev) => [newItem, ...prev])
+    toast.success('Item added')
+    setDialogOpen(false)
+    form.reset()
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Inventory"
         description={`Track school assets, supplies, and equipment at ${school.name}.`}
         actions={
-          <Button onClick={() => toast.success('Item added')}>
-            <Plus className="size-4" /> Add Item
-          </Button>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="size-4" /> Add Item
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add an inventory item</DialogTitle>
+                <DialogDescription>Add a new asset or supply to {school.name}'s inventory.</DialogDescription>
+              </DialogHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Item name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Student Desks" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="category"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Category</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select category" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {CATEGORY_OPTIONS.map((c) => (
+                              <SelectItem key={c.value} value={c.value}>
+                                {c.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="quantity"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Quantity</FormLabel>
+                        <FormControl>
+                          <Input type="number" min={1} {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="unit"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Unit</FormLabel>
+                        <FormControl>
+                          <Input placeholder="units" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <DialogFooter>
+                    <Button type="submit" disabled={form.formState.isSubmitting}>
+                      {form.formState.isSubmitting && <Loader2 className="size-4 animate-spin" />}
+                      Add item
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
         }
       />
 

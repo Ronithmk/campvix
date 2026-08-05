@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
 import { toast } from 'sonner'
-import { FileText, File, Sheet as SheetIcon, Image, Folder, Star, Upload, MoreHorizontal, Download, Trash2 } from 'lucide-react'
+import { FileText, File, Sheet as SheetIcon, Image, Folder, Star, Upload, MoreHorizontal, Download, Trash2, Loader2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { StatCard } from '@/components/shared/stat-card'
 import { Card, CardContent } from '@/components/ui/card'
@@ -8,8 +11,11 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ConfirmDeleteDialog } from '@/components/shared/confirm-delete-dialog'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
 import { documents as mockDocuments } from '@/mock/platform'
-import { formatDate } from '@/lib/utils'
+import { formatDate, sleep } from '@/lib/utils'
 import { useActiveSchool } from '@/hooks/use-active-school'
 import type { DocumentItem, DocumentType } from '@/types'
 
@@ -22,16 +28,46 @@ const TYPE_COLORS: Record<DocumentType, string> = {
   folder: 'text-amber-500 bg-amber-500/10',
 }
 
+const uploadSchema = z.object({
+  name: z.string().min(2, 'File name is required'),
+  folder: z.string().min(1, 'Folder is required'),
+  type: z.enum(['pdf', 'doc', 'sheet', 'image', 'folder']),
+})
+
+type UploadValues = z.infer<typeof uploadSchema>
+
 export default function DocumentsPage() {
   const school = useActiveSchool()
   const [allDocuments, setAllDocuments] = useState<DocumentItem[]>(mockDocuments)
   const documents = useMemo(() => allDocuments.filter((d) => d.schoolId === school.id), [allDocuments, school.id])
   const [folderFilter, setFolderFilter] = useState('all')
   const [pendingDelete, setPendingDelete] = useState<DocumentItem | null>(null)
+  const [dialogOpen, setDialogOpen] = useState(false)
   const folders = Array.from(new Set(documents.map((d) => d.folder)))
   const filtered = useMemo(() => documents.filter((d) => folderFilter === 'all' || d.folder === folderFilter), [documents, folderFilter])
 
   const starred = documents.filter((d) => d.starred).length
+
+  const form = useForm<UploadValues>({ resolver: zodResolver(uploadSchema), defaultValues: { name: '', folder: 'General', type: 'pdf' } })
+
+  async function onSubmit(values: UploadValues) {
+    await sleep(500)
+    const newDoc: DocumentItem = {
+      id: `doc-new-${Date.now()}`,
+      schoolId: school.id,
+      name: values.name,
+      type: values.type,
+      size: `${Math.floor(Math.random() * 4000) + 80} KB`,
+      owner: 'You',
+      modifiedDate: new Date().toISOString(),
+      folder: values.folder,
+      starred: false,
+    }
+    setAllDocuments((prev) => [newDoc, ...prev])
+    toast.success('File uploaded')
+    setDialogOpen(false)
+    form.reset()
+  }
 
   function handleDelete() {
     if (!pendingDelete) return
@@ -46,9 +82,90 @@ export default function DocumentsPage() {
         title="Documents"
         description="Centralized document management for the entire school."
         actions={
-          <Button onClick={() => toast.success('File uploaded')}>
-            <Upload className="size-4" /> Upload
-          </Button>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Upload className="size-4" /> Upload
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Upload a file</DialogTitle>
+                <DialogDescription>Add a document to {school.name}'s library.</DialogDescription>
+              </DialogHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>File name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Fee Structure.sheet" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="folder"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Folder</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select folder" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {folders.map((f) => (
+                              <SelectItem key={f} value={f}>
+                                {f}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="type"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>File type</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="pdf">PDF</SelectItem>
+                            <SelectItem value="doc">Document</SelectItem>
+                            <SelectItem value="sheet">Spreadsheet</SelectItem>
+                            <SelectItem value="image">Image</SelectItem>
+                            <SelectItem value="folder">Folder</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <DialogFooter>
+                    <Button type="submit" disabled={form.formState.isSubmitting}>
+                      {form.formState.isSubmitting && <Loader2 className="size-4 animate-spin" />}
+                      Upload file
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
         }
       />
 

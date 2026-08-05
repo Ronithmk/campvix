@@ -69,25 +69,38 @@ describe('DocumentsPage', () => {
     expect(screen.queryByText(target.name)).not.toBeInTheDocument()
   })
 
+  it('uploads a new file scoped to the current school and adds it to the list', async () => {
+    const user = userEvent.setup()
+    render(<DocumentsPage />)
+
+    await user.click(screen.getByRole('button', { name: /^upload$/i }))
+    const dialog = await screen.findByRole('dialog')
+    await user.type(within(dialog).getByLabelText(/file name/i), 'QA Test Report.pdf')
+    await user.click(within(dialog).getByRole('combobox', { name: /folder/i }))
+    await user.click(await screen.findByRole('option', { name: 'Reports' }))
+    await user.click(within(dialog).getByRole('combobox', { name: /file type/i }))
+    await user.click(await screen.findByRole('option', { name: 'PDF' }))
+    await user.click(within(dialog).getByRole('button', { name: /upload file/i }))
+
+    expect(await screen.findByText('QA Test Report.pdf')).toBeInTheDocument()
+  })
+
   it('re-scopes the document list to the newly active school (multi-tenant isolation)', () => {
-    // Document file names come from a fixed template list shared by every school
-    // (DOC_DEFS in mock/platform.ts), so the same file name legitimately appears
-    // for every school — it's the owner/size/date on each row that's school-specific.
-    // We assert on that row fingerprint instead of on name-presence.
     useAuthStore.setState({ schoolId: schools[0].id })
     const { rerender } = render(<DocumentsPage />)
     const schoolADocs = schoolDocs(schools[0].id)
     const targetName = schoolADocs[0].name
-    const rowFingerprintBefore = screen.getByText(targetName).closest('div')!.parentElement!.textContent
+    expect(screen.getByText(targetName)).toBeInTheDocument()
 
     useAuthStore.setState({ schoolId: schools[1].id })
     rerender(<DocumentsPage />)
 
+    // Document names are now school-specific (prefixed with the school's short
+    // name), so School A's file name genuinely disappears from School B's view.
+    expect(screen.queryByText(targetName)).not.toBeInTheDocument()
     const schoolBDocs = schoolDocs(schools[1].id)
-    expect(schoolBDocs).not.toEqual(schoolADocs)
-    const rowFingerprintAfter = screen.getByText(targetName).closest('div')!.parentElement!.textContent
-    expect(rowFingerprintAfter).not.toBe(rowFingerprintBefore)
+    expect(screen.getByText(schoolBDocs[0].name)).toBeInTheDocument()
     // Still scoped correctly — same fixed template count per school (12 files each).
-    expect(schoolDocs(schools[1].id)).toHaveLength(schoolADocs.length)
+    expect(schoolBDocs).toHaveLength(schoolADocs.length)
   })
 })

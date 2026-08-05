@@ -51,15 +51,15 @@ export default function ResetPasswordPage() {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>New password</FormLabel>
-                <FormControl>
-                  <div className="relative">
-                    <KeyRound className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                <div className="relative">
+                  <KeyRound className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                  <FormControl>
                     <Input type={show ? 'text' : 'password'} className="px-9" {...field} />
-                    <button type="button" onClick={() => setShow((v) => !v)} className="absolute top-1/2 right-2.5 -translate-y-1/2 text-muted-foreground hover:text-foreground" tabIndex={-1}>
-                      {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                    </button>
-                  </div>
-                </FormControl>
+                  </FormControl>
+                  <button type="button" onClick={() => setShow((v) => !v)} className="absolute top-1/2 right-2.5 -translate-y-1/2 text-muted-foreground hover:text-foreground" tabIndex={-1}>
+                    {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                  </button>
+                </div>
                 <FormMessage />
               </FormItem>
             )}

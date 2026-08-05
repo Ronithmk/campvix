@@ -10,7 +10,7 @@ export function getFeeColumns(onDelete: (fee: FeeRecord) => void): ColumnDef<Fee
   return [
   {
     id: 'invoiceNo',
-    accessorKey: 'invoiceNo',
+    accessorFn: (row) => `${row.invoiceNo} ${row.studentName}`,
     header: 'Invoice',
     cell: ({ row }) => (
       <div className="flex flex-col">

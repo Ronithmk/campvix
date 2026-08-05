@@ -61,15 +61,22 @@ describe('AssignmentsPage — filter', () => {
   })
 })
 
-describe('AssignmentsPage — New Assignment button is a stub', () => {
-  it('shows a success toast but does not add a card (known UI stub)', async () => {
+describe('AssignmentsPage — creates a new assignment', () => {
+  it('adds a new assignment card scoped to the current school', async () => {
     const user = userEvent.setup()
     render(<AssignmentsPage />)
     const before = mockAssignments.filter((a) => a.schoolId === schoolId()).length
 
     await user.click(screen.getByRole('button', { name: /new assignment/i }))
+    await user.type(screen.getByLabelText(/title/i), 'Test Automation Worksheet')
+    await user.click(screen.getByRole('combobox', { name: /subject/i }))
+    await user.click(await screen.findByRole('option', { name: /mathematics/i }))
+    await user.click(screen.getByRole('combobox', { name: /class/i }))
+    await user.click((await screen.findAllByRole('option'))[0])
+    await user.click(screen.getByRole('button', { name: /create assignment/i }))
 
-    expect(screen.getByText('Total Assignments', { selector: 'p.text-muted-foreground' }).nextElementSibling).toHaveTextContent(String(before))
+    expect(await screen.findByText('Test Automation Worksheet')).toBeInTheDocument()
+    expect(screen.getByText('Total Assignments', { selector: 'p.text-muted-foreground' }).nextElementSibling).toHaveTextContent(String(before + 1))
   })
 })
 

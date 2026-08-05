@@ -54,7 +54,8 @@ export default function AnalyticsPage() {
     return Array.from(counts.entries()).map(([category, value]) => ({ category, value }))
   }, [feeRecords])
 
-  const atRiskStudents = students.filter((s) => s.attendancePercent < 75 || s.gpa < 6.5).slice(0, 6)
+  const allAtRiskStudents = students.filter((s) => s.attendancePercent < 75 || s.gpa < 6.5)
+  const atRiskStudents = allAtRiskStudents.slice(0, 6)
   const growthPercent = enrollmentTrend.length ? Math.round(((enrollmentTrend[enrollmentTrend.length - 1].students - enrollmentTrend[0].students) / enrollmentTrend[0].students) * 1000) / 10 : 0
   const totalRevenue = feeRecords.reduce((sum, f) => sum + f.paidAmount, 0)
   const revenuePerStudent = students.length ? Math.round(totalRevenue / students.length) : 0
@@ -66,7 +67,7 @@ export default function AnalyticsPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard index={0} label="6-Year Growth" value={`${growthPercent >= 0 ? '+' : ''}${growthPercent}%`} icon={TrendingUp} accent="primary" change={growthPercent} />
         <StatCard index={1} label="Total Enrollment" value={formatNumber(students.length)} icon={Users} accent="accent" change={7.6} />
-        <StatCard index={2} label="At-Risk Students" value={String(atRiskStudents.length)} icon={AlertTriangle} accent="destructive" change={-1.8} />
+        <StatCard index={2} label="At-Risk Students" value={String(allAtRiskStudents.length)} icon={AlertTriangle} accent="destructive" change={-1.8} />
         <StatCard index={3} label="Revenue per Student" value={formatCurrency(revenuePerStudent)} icon={Wallet} accent="warning" change={4.3} />
       </div>
 

@@ -50,15 +50,21 @@ describe('StaffPage — filter', () => {
   })
 })
 
-describe('StaffPage — Add Staff button is a stub', () => {
-  it('claims success via toast but does not actually add a row (known UI stub)', async () => {
+describe('StaffPage — Add Staff', () => {
+  it('creates a new staff member scoped to the current school and adds it to the list', async () => {
     const user = userEvent.setup()
     render(<StaffPage />)
     const before = mockStaff.filter((s) => s.schoolId === schoolId()).length
 
     await user.click(screen.getByRole('button', { name: /add staff/i }))
+    await user.type(screen.getByLabelText(/full name/i), 'Test Automation Staffer')
+    await user.type(screen.getByLabelText(/email/i), 'test.staff@school.edu')
+    await user.click(screen.getByRole('combobox', { name: /role/i }))
+    await user.click(await screen.findByRole('option', { name: /^librarian$/i }))
+    await user.click(screen.getByRole('button', { name: /save staff member/i }))
 
-    expect(screen.getByText('Total Staff', { selector: 'p.text-muted-foreground' }).nextElementSibling).toHaveTextContent(formatNumber(before))
+    expect(await screen.findByText('Test Automation Staffer')).toBeInTheDocument()
+    expect(screen.getByText('Total Staff', { selector: 'p.text-muted-foreground' }).nextElementSibling).toHaveTextContent(formatNumber(before + 1))
   })
 })
 

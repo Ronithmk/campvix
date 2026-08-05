@@ -89,9 +89,7 @@ describe('LoginPage — manual sign-in form', () => {
     renderLogin()
 
     // Default email (admin@campusflow.app) is valid; only the password is wrong.
-    // Located via its pre-filled display value since getByLabelText can't reach it
-    // (see the broken label association noted below).
-    const passwordInput = screen.getByDisplayValue('demo1234')
+    const passwordInput = screen.getByLabelText(/password/i)
     await user.clear(passwordInput)
     await user.type(passwordInput, 'wrongpass')
     await user.click(screen.getByRole('button', { name: /^sign in$/i }))
@@ -100,13 +98,3 @@ describe('LoginPage — manual sign-in form', () => {
     expect(useAuthStore.getState().isAuthenticated).toBe(false)
   })
 })
-
-// PRE-EXISTING BUG (not fixed here, out of scope for a test-only pass): the
-// password field's FormControl wraps its <Input> in an extra <div className="relative">
-// (for the show/hide-password button). Radix Slot only forwards the generated
-// id/aria-* props to its immediate child, so they land on that wrapper <div>
-// instead of the <input> — the <FormLabel htmlFor> therefore points at a
-// non-labellable element and getByLabelText(/password/i) cannot find the input.
-// The same pattern (and bug) shows up on forgot-password.tsx's email field and
-// reset-password.tsx's "new password" field, both of which also wrap Input in a
-// decorative <div>.

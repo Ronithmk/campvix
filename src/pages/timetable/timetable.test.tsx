@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import TimetablePage from './timetable'
@@ -41,5 +41,31 @@ describe('TimetablePage — class switcher', () => {
     await user.click(await screen.findByRole('option', { name: nextClass.name }))
 
     expect(await screen.findByText(new RegExp(`Room ${nextClass.room}`))).toBeInTheDocument()
+  })
+})
+
+describe('TimetablePage — Print', () => {
+  it('opens the browser print dialog instead of just showing a toast', async () => {
+    const user = userEvent.setup()
+    const printSpy = vi.spyOn(window, 'print').mockImplementation(() => {})
+    render(<TimetablePage />)
+
+    await user.click(screen.getByRole('button', { name: /print/i }))
+
+    expect(printSpy).toHaveBeenCalledTimes(1)
+    printSpy.mockRestore()
+  })
+})
+
+describe('TimetablePage — Auto-generate', () => {
+  it('regenerates the displayed schedule with a different arrangement of slots', async () => {
+    const user = userEvent.setup()
+    render(<TimetablePage />)
+
+    const before = screen.getAllByRole('cell').map((c) => c.textContent)
+    await user.click(screen.getByRole('button', { name: /auto-generate/i }))
+    const after = screen.getAllByRole('cell').map((c) => c.textContent)
+
+    expect(after).not.toEqual(before)
   })
 })

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
+import { Link } from 'react-router-dom'
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip as RechartsTooltip } from 'recharts'
 import { Wallet, ReceiptText, AlertCircle, CheckCircle2, Plus } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
@@ -58,8 +59,10 @@ export default function FeeManagementPage() {
         title="Fee Management"
         description={`Track collections, dues, and payment status at ${school.name}.`}
         actions={
-          <Button onClick={() => toast.success('Invoice created')}>
-            <Plus className="size-4" /> Create Invoice
+          <Button asChild>
+            <Link to="/app/finance/invoices">
+              <Plus className="size-4" /> Create Invoice
+            </Link>
           </Button>
         }
       />

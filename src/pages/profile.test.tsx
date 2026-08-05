@@ -25,12 +25,11 @@ describe('ProfilePage', () => {
     useAuthStore.getState().loginAsRole('teacher')
     render(<ProfilePage />)
 
-    // Label/Input are unassociated siblings in this page (no htmlFor/id), so
-    // match inputs by their pre-filled defaultValue instead of label text.
     const { name, email } = useAuthStore.getState()
-    expect(screen.getByDisplayValue(name)).toBeInTheDocument()
-    expect(screen.getByDisplayValue(email)).toBeInTheDocument()
-    const roleInput = screen.getByDisplayValue(ROLE_LABELS.teacher)
+    expect(screen.getByLabelText(/full name/i)).toHaveValue(name)
+    expect(screen.getByLabelText(/email address/i)).toHaveValue(email)
+    const roleInput = screen.getByLabelText(/^role$/i)
+    expect(roleInput).toHaveValue(ROLE_LABELS.teacher)
     expect(roleInput).toBeDisabled()
   })
 

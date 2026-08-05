@@ -43,15 +43,22 @@ describe('ClassesPage — rendering and stats', () => {
   })
 })
 
-describe('ClassesPage — Add Class button is a stub', () => {
-  it('shows a success toast but does not add a new class card (known UI stub)', async () => {
+describe('ClassesPage — creates a new class', () => {
+  it('adds a new class card scoped to the current school', async () => {
     const user = userEvent.setup()
     render(<ClassesPage />)
     const before = mockClasses.filter((c) => c.schoolId === schoolId()).length
 
-    await user.click(screen.getByRole('button', { name: /add class/i }))
+    await user.click(screen.getByRole('button', { name: 'Add Class' }))
+    await user.type(screen.getByLabelText(/grade/i), 'Grade 11')
+    await user.type(screen.getByLabelText(/^section$/i), 'C')
+    await user.type(screen.getByLabelText(/room/i), '2B-210')
+    await user.click(screen.getByRole('combobox', { name: /class teacher/i }))
+    await user.click((await screen.findAllByRole('option'))[0])
+    await user.click(screen.getByRole('button', { name: 'Add class' }))
 
-    expect(screen.getByText('Total Classes', { selector: 'p.text-muted-foreground' }).nextElementSibling).toHaveTextContent(String(before))
+    expect(await screen.findByText('Grade 11 - C')).toBeInTheDocument()
+    expect(screen.getByText('Total Classes', { selector: 'p.text-muted-foreground' }).nextElementSibling).toHaveTextContent(String(before + 1))
   })
 })
 

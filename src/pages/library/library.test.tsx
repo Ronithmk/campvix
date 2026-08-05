@@ -69,6 +69,28 @@ describe('LibraryPage', () => {
     expect(screen.queryByText(target.title)).not.toBeInTheDocument()
   })
 
+  it('adds a new book to the catalog scoped to the current school', async () => {
+    const user = userEvent.setup()
+    useAuthStore.getState().loginAsRole('administrator')
+    render(<LibraryPage />)
+
+    await user.click(screen.getByRole('button', { name: /add book/i }))
+    const dialog = screen.getByRole('dialog')
+
+    await user.type(screen.getByLabelText(/^title$/i), 'Automated Testing 101')
+    await user.type(screen.getByLabelText(/^author$/i), 'QA Bot')
+    await user.click(screen.getByRole('combobox', { name: /category/i }))
+    await user.click(await screen.findByRole('option', { name: /^science$/i }))
+    const copiesInput = screen.getByLabelText(/total copies/i)
+    await user.clear(copiesInput)
+    await user.type(copiesInput, '5')
+    await user.click(within(dialog).getByRole('button', { name: /^add book$/i }))
+
+    expect(await screen.findByText('Automated Testing 101')).toBeInTheDocument()
+    expect(screen.getByText('QA Bot')).toBeInTheDocument()
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
   it('removes an issue record after confirming the delete dialog', async () => {
     const user = userEvent.setup()
     useAuthStore.getState().loginAsRole('administrator')

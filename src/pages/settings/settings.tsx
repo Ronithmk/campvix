@@ -66,20 +66,20 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-4 pb-6 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
-                <Label>School name</Label>
-                <Input defaultValue={school.name} />
+                <Label htmlFor="settings-school-name">School name</Label>
+                <Input id="settings-school-name" defaultValue={school.name} />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label>City</Label>
-                <Input defaultValue={school.city} />
+                <Label htmlFor="settings-school-city">City</Label>
+                <Input id="settings-school-city" defaultValue={school.city} />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label>Country</Label>
-                <Input defaultValue={school.country} />
+                <Label htmlFor="settings-school-country">Country</Label>
+                <Input id="settings-school-country" defaultValue={school.country} />
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label>Established year</Label>
-                <Input defaultValue={school.establishedYear} type="number" />
+                <Label htmlFor="settings-school-established-year">Established year</Label>
+                <Input id="settings-school-established-year" defaultValue={school.establishedYear} type="number" />
               </div>
             </CardContent>
           </Card>
@@ -93,9 +93,9 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="grid grid-cols-1 gap-4 pb-6 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">
-                <Label>Current academic year</Label>
+                <Label htmlFor="settings-academic-year">Current academic year</Label>
                 <Select defaultValue="2026-27">
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger id="settings-academic-year" className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -105,9 +105,9 @@ export default function SettingsPage() {
                 </Select>
               </div>
               <div className="flex flex-col gap-1.5">
-                <Label>Number of terms</Label>
+                <Label htmlFor="settings-academic-terms">Number of terms</Label>
                 <Select defaultValue="3">
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger id="settings-academic-terms" className="w-full">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

@@ -42,6 +42,27 @@ describe('AdmissionsPage — rendering and stats', () => {
   })
 })
 
+describe('AdmissionsPage — New Application', () => {
+  it('records a new application scoped to the current school and adds it to the Inquiry lane', async () => {
+    const user = userEvent.setup()
+    render(<AdmissionsPage />)
+    const total = mockAdmissions.filter((a) => a.schoolId === schoolId()).length
+    const inquiryBefore = laneCount('Inquiry')
+
+    await user.click(screen.getByRole('button', { name: /new application/i }))
+    await user.type(screen.getByLabelText(/applicant name/i), 'Test Automation Applicant')
+    await user.type(screen.getByLabelText(/grade applied for/i), 'Grade 6')
+    await user.type(screen.getByLabelText(/parent \/ guardian name/i), 'Test Automation Parent')
+    await user.type(screen.getByLabelText(/parent email/i), 'test.parent@example.com')
+    await user.type(screen.getByLabelText(/parent phone/i), '+91 90000 00001')
+    await user.click(screen.getByRole('button', { name: /record application/i }))
+
+    expect(await screen.findByText('Test Automation Applicant')).toBeInTheDocument()
+    expect(screen.getByText('Total Applicants', { selector: 'p.text-muted-foreground' }).nextElementSibling).toHaveTextContent(String(total + 1))
+    expect(laneCount('Inquiry')).toBe(String(Number(inquiryBefore) + 1))
+  })
+})
+
 describe('AdmissionsPage — search filter', () => {
   it('filters the pipeline down to matching applicants by name', async () => {
     const user = userEvent.setup()

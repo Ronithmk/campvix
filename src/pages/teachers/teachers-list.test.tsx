@@ -50,15 +50,21 @@ describe('TeachersListPage — filter', () => {
   })
 })
 
-describe('TeachersListPage — Add Teacher button is a stub', () => {
-  it('does not add a row when clicked (known UI stub, not real form logic)', async () => {
+describe('TeachersListPage — Add Teacher', () => {
+  it('creates a new teacher scoped to the current school and adds it to the list', async () => {
     const user = userEvent.setup()
     render(<TeachersListPage />)
     const before = mockTeachers.filter((t) => t.schoolId === schoolId()).length
 
     await user.click(screen.getByRole('button', { name: /add teacher/i }))
+    await user.type(screen.getByLabelText(/full name/i), 'Test Automation Teacher')
+    await user.type(screen.getByLabelText(/email/i), 'test.teacher@school.edu')
+    await user.type(screen.getByLabelText(/subjects taught/i), 'Mathematics, Physics')
+    await user.type(screen.getByLabelText(/qualification/i), 'M.Sc')
+    await user.click(screen.getByRole('button', { name: /save teacher/i }))
 
-    expect(screen.getByText('Total Teachers', { selector: 'p.text-muted-foreground' }).nextElementSibling).toHaveTextContent(formatNumber(before))
+    expect(await screen.findByText('Test Automation Teacher')).toBeInTheDocument()
+    expect(screen.getByText('Total Teachers', { selector: 'p.text-muted-foreground' }).nextElementSibling).toHaveTextContent(formatNumber(before + 1))
   })
 })
 

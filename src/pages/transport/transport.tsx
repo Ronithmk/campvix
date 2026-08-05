@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
 import { toast } from 'sonner'
-import { Bus, Users, MapPin, Plus, Phone, Trash2 } from 'lucide-react'
+import { Bus, Users, MapPin, Plus, Phone, Trash2, Loader2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { StatCard } from '@/components/shared/stat-card'
 import { Card, CardContent } from '@/components/ui/card'
@@ -9,8 +12,11 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Progress } from '@/components/ui/progress'
 import { DeleteConfirm } from '@/components/shared/delete-confirm'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
 import { transportRoutes as mockRoutes } from '@/mock/facilities'
-import { cn, initials } from '@/lib/utils'
+import { cn, initials, sleep } from '@/lib/utils'
 import type { TransportRoute } from '@/types'
 import { useActiveSchool } from '@/hooks/use-active-school'
 
@@ -20,9 +26,21 @@ const STATUS_STYLES: Record<string, string> = {
   maintenance: 'bg-warning-bg text-warning',
 }
 
+const routeSchema = z.object({
+  name: z.string().min(2, 'Route name is required'),
+  vehicleNo: z.string().min(2, 'Vehicle number is required'),
+  driverName: z.string().min(2, 'Driver name is required'),
+  capacity: z.coerce.number().min(1, 'Enter a valid capacity'),
+})
+
+type RouteValues = z.infer<typeof routeSchema>
+
 export default function TransportPage() {
   const school = useActiveSchool()
   const [transportRoutes, setTransportRoutes] = useState<TransportRoute[]>(mockRoutes)
+  const [dialogOpen, setDialogOpen] = useState(false)
+
+  const form = useForm<RouteValues>({ resolver: zodResolver(routeSchema), defaultValues: { name: '', vehicleNo: '', driverName: '', capacity: 40 } })
 
   const schoolRoutes = useMemo(() => transportRoutes.filter((r) => r.schoolId === school.id), [transportRoutes, school.id])
   const totalCapacity = schoolRoutes.reduce((sum, r) => sum + r.capacity, 0)
@@ -34,15 +52,110 @@ export default function TransportPage() {
     toast.success(`${name} was removed`)
   }
 
+  async function onSubmit(values: RouteValues) {
+    await sleep(500)
+    const newRoute: TransportRoute = {
+      id: `route-new-${Date.now()}`,
+      schoolId: school.id,
+      name: values.name,
+      vehicleNo: values.vehicleNo,
+      driverName: values.driverName,
+      driverAvatar: `https://avatars.githubusercontent.com/u/${Math.floor(Math.random() * 900000)}?v=4`,
+      driverPhone: '+91 90000 00000',
+      capacity: values.capacity,
+      occupied: 0,
+      stops: ['School Gate'],
+      status: 'idle',
+      currentStop: 'School Gate',
+      etaMinutes: 0,
+    }
+    setTransportRoutes((prev) => [newRoute, ...prev])
+    toast.success('Route created')
+    setDialogOpen(false)
+    form.reset()
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Transport"
         description={`Manage bus routes, drivers, and student transport at ${school.name}.`}
         actions={
-          <Button onClick={() => toast.success('Route created')}>
-            <Plus className="size-4" /> Add Route
-          </Button>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="size-4" /> Add Route
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add a transport route</DialogTitle>
+                <DialogDescription>Set up a new bus route for {school.name}.</DialogDescription>
+              </DialogHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Route name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Route G - Lakeside" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="vehicleNo"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Vehicle number</FormLabel>
+                        <FormControl>
+                          <Input placeholder="KA-05-AB-1234" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="driverName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Driver name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Suresh Kumar" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="capacity"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Capacity</FormLabel>
+                        <FormControl>
+                          <Input type="number" min={1} {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <DialogFooter>
+                    <Button type="submit" disabled={form.formState.isSubmitting}>
+                      {form.formState.isSubmitting && <Loader2 className="size-4 animate-spin" />}
+                      Add route
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
         }
       />
 

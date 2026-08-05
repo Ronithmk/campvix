@@ -46,15 +46,23 @@ describe('HomeworkPage — rendering and stats', () => {
   })
 })
 
-describe('HomeworkPage — Assign Homework button is a stub', () => {
-  it('shows a success toast but does not add an entry (known UI stub)', async () => {
+describe('HomeworkPage — assigns new homework', () => {
+  it('adds a new homework entry scoped to the current school', async () => {
     const user = userEvent.setup()
     render(<HomeworkPage />)
     const before = mockHomework.filter((h) => h.schoolId === schoolId()).length
 
-    await user.click(screen.getByRole('button', { name: /assign homework/i }))
+    await user.click(screen.getByRole('button', { name: 'Assign Homework' }))
+    await user.type(screen.getByLabelText(/title/i), 'Test Automation Worksheet')
+    await user.type(screen.getByLabelText(/description/i), 'Complete the QA checklist')
+    await user.click(screen.getByRole('combobox', { name: /subject/i }))
+    await user.click(await screen.findByRole('option', { name: /mathematics/i }))
+    await user.click(screen.getByRole('combobox', { name: /class/i }))
+    await user.click((await screen.findAllByRole('option'))[0])
+    await user.click(screen.getByRole('button', { name: 'Assign homework' }))
 
-    expect(screen.getByText('Total Entries', { selector: 'p.text-muted-foreground' }).nextElementSibling).toHaveTextContent(String(before))
+    expect(await screen.findByText('Test Automation Worksheet')).toBeInTheDocument()
+    expect(screen.getByText('Total Entries', { selector: 'p.text-muted-foreground' }).nextElementSibling).toHaveTextContent(String(before + 1))
   })
 })
 

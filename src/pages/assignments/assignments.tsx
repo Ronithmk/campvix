@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
 import { toast } from 'sonner'
-import { NotebookPen, ClipboardCheck, Clock, Plus, Trash2 } from 'lucide-react'
+import { NotebookPen, ClipboardCheck, Clock, Plus, Trash2, Loader2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { StatCard } from '@/components/shared/stat-card'
 import { Card, CardContent } from '@/components/ui/card'
@@ -10,26 +13,71 @@ import { Progress } from '@/components/ui/progress'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { StatusBadge } from '@/components/shared/status-badge'
 import { DeleteConfirm } from '@/components/shared/delete-confirm'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
 import { assignments as mockAssignments } from '@/mock/coursework'
 import { classes } from '@/mock/classes'
 import { subjects } from '@/mock/subjects'
-import { formatDate } from '@/lib/utils'
+import { teachers } from '@/mock/teachers'
+import { formatDate, sleep } from '@/lib/utils'
 import type { Assignment } from '@/types'
 import { useActiveSchool } from '@/hooks/use-active-school'
+
+const assignmentSchema = z.object({
+  title: z.string().min(2, 'Title is required'),
+  subjectId: z.string().min(1, 'Select a subject'),
+  classId: z.string().min(1, 'Select a class'),
+  dueDate: z.string().min(1, 'Due date is required'),
+})
+
+type AssignmentValues = z.infer<typeof assignmentSchema>
 
 export default function AssignmentsPage() {
   const school = useActiveSchool()
   const [assignments, setAssignments] = useState<Assignment[]>(mockAssignments)
   const [statusFilter, setStatusFilter] = useState('all')
+  const [dialogOpen, setDialogOpen] = useState(false)
 
   const schoolAssignments = useMemo(() => assignments.filter((a) => a.schoolId === school.id), [assignments, school.id])
   const filtered = useMemo(() => schoolAssignments.filter((a) => statusFilter === 'all' || a.status === statusFilter), [schoolAssignments, statusFilter])
+  const schoolClasses = useMemo(() => classes.filter((c) => c.schoolId === school.id), [school.id])
+  const schoolTeachers = useMemo(() => teachers.filter((t) => t.schoolId === school.id), [school.id])
 
   const published = schoolAssignments.filter((a) => a.status === 'published').length
   const grading = schoolAssignments.filter((a) => a.status === 'grading').length
   const avgSubmission = schoolAssignments.length
     ? Math.round((schoolAssignments.reduce((sum, a) => sum + (a.totalStudents ? a.totalSubmissions / a.totalStudents : 0), 0) / schoolAssignments.length) * 100)
     : 0
+
+  const form = useForm<AssignmentValues>({
+    resolver: zodResolver(assignmentSchema),
+    defaultValues: { title: '', subjectId: '', classId: '', dueDate: new Date().toISOString().slice(0, 10) },
+  })
+
+  async function onSubmit(values: AssignmentValues) {
+    await sleep(500)
+    const klass = schoolClasses.find((c) => c.id === values.classId)!
+    const newAssignment: Assignment = {
+      id: `assignment-new-${Date.now()}`,
+      schoolId: school.id,
+      title: values.title,
+      subjectId: values.subjectId,
+      classId: values.classId,
+      teacherId: schoolTeachers[0]?.id ?? '',
+      assignedDate: new Date().toISOString(),
+      dueDate: new Date(values.dueDate).toISOString(),
+      totalSubmissions: 0,
+      totalStudents: klass.strength,
+      graded: 0,
+      status: 'draft',
+      maxScore: 100,
+    }
+    setAssignments((prev) => [newAssignment, ...prev])
+    toast.success(`${newAssignment.title} was created`)
+    setDialogOpen(false)
+    form.reset()
+  }
 
   function handleDelete(id: string, title: string) {
     setAssignments((prev) => prev.filter((a) => a.id !== id))
@@ -42,9 +90,103 @@ export default function AssignmentsPage() {
         title="Assignments"
         description={`Create, distribute, and grade assignments at ${school.name}.`}
         actions={
-          <Button onClick={() => toast.success('Assignment created')}>
-            <Plus className="size-4" /> New Assignment
-          </Button>
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="size-4" /> New Assignment
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Create a new assignment</DialogTitle>
+                <DialogDescription>Set up the assignment — you can publish it once it's ready.</DialogDescription>
+              </DialogHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
+                  <FormField
+                    control={form.control}
+                    name="title"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Title</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Algebra Problem Set" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="subjectId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Subject</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select subject" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {subjects.map((s) => (
+                              <SelectItem key={s.id} value={s.id}>
+                                {s.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="classId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Class</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="w-full">
+                              <SelectValue placeholder="Select class" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {schoolClasses.map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                {c.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="dueDate"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Due date</FormLabel>
+                        <FormControl>
+                          <Input type="date" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <DialogFooter>
+                    <Button type="submit" disabled={form.formState.isSubmitting}>
+                      {form.formState.isSubmitting && <Loader2 className="size-4 animate-spin" />}
+                      Create assignment
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            </DialogContent>
+          </Dialog>
         }
       />
 

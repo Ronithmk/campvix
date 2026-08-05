@@ -2,7 +2,12 @@ import { faker } from '@faker-js/faker'
 import type { AlumniProfile, Course, DocumentItem, EmailTemplate, GalleryAlbum } from '@/types'
 import { subjects } from './subjects'
 import { teachers } from './teachers'
+import { schools } from './schools'
 import { SCHOOL_ROSTER_CONFIG } from './school-roster-config'
+
+function schoolShortName(schoolId: string): string {
+  return schools.find((s) => s.id === schoolId)?.name.split(' ')[0] ?? schoolId
+}
 
 faker.seed(207)
 
@@ -73,10 +78,11 @@ const DOC_DEFS: Array<[string, DocumentItem['type'], string]> = [
 
 export const documents: DocumentItem[] = SCHOOL_ROSTER_CONFIG.flatMap((config) => {
   const schoolTeachers = teachers.filter((t) => t.schoolId === config.schoolId)
+  const shortName = schoolShortName(config.schoolId)
   return DOC_DEFS.map(([name, type, folder], i) => ({
     id: `doc-${config.schoolId}-${i + 1}`,
     schoolId: config.schoolId,
-    name,
+    name: `${shortName} ${name}`,
     type,
     size: type === 'folder' ? '—' : `${faker.number.int({ min: 80, max: 4200 })} KB`,
     owner: (schoolTeachers[i % schoolTeachers.length] ?? faker.helpers.arrayElement(teachers)).name,
@@ -97,18 +103,19 @@ const TEMPLATE_DEFS: Array<[string, string, EmailTemplate['category']]> = [
   ['Event Invitation', 'You\'re invited to our school event', 'general'],
 ]
 
-export const emailTemplates: EmailTemplate[] = SCHOOL_ROSTER_CONFIG.flatMap((config) =>
-  TEMPLATE_DEFS.map(([name, subject, category], i) => ({
+export const emailTemplates: EmailTemplate[] = SCHOOL_ROSTER_CONFIG.flatMap((config) => {
+  const shortName = schoolShortName(config.schoolId)
+  return TEMPLATE_DEFS.map(([name, subject, category], i) => ({
     id: `template-${config.schoolId}-${i + 1}`,
     schoolId: config.schoolId,
-    name,
+    name: `${shortName} ${name}`,
     subject,
     category,
     lastEdited: faker.date.recent({ days: 30 }).toISOString(),
     sentCount: faker.number.int({ min: 12, max: 2400 }),
     preview: faker.lorem.paragraph(),
-  })),
-)
+  }))
+})
 
 export const ALBUM_DEFS: Array<[string, string]> = [
   ['Annual Sports Day 2026', '#2563eb'],

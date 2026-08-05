@@ -25,13 +25,14 @@ export default function TimetablePage() {
   const classes = useMemo(() => allClasses.filter((c) => c.schoolId === school.id), [school.id])
   const teachers = useMemo(() => allTeachers.filter((t) => t.schoolId === school.id), [school.id])
   const [classId, setClassId] = useState(classes[0]?.id)
+  const [regenSeed, setRegenSeed] = useState(0)
 
   const activeClassId = classes.some((c) => c.id === classId) ? classId : classes[0]?.id
   const klass = classes.find((c) => c.id === activeClassId)
 
   const grid = useMemo(() => {
     if (!activeClassId) return []
-    const seed = hashCode(activeClassId)
+    const seed = hashCode(activeClassId) + regenSeed
     return DAYS.map((_day, di) =>
       PERIODS.map((_, pi) => {
         if (pi === 4) return { subject: 'Lunch Break', teacher: '', color: '#94a3b8', isBreak: true }
@@ -41,7 +42,12 @@ export default function TimetablePage() {
         return { subject: subject.name, teacher: teacher?.name ?? '', color: subject.color, isBreak: false }
       }),
     )
-  }, [activeClassId, teachers])
+  }, [activeClassId, teachers, regenSeed])
+
+  function handleAutoGenerate() {
+    setRegenSeed((s) => s + 1)
+    toast.success('Timetable auto-generated')
+  }
 
   if (!klass) {
     return <PageHeader title="Timetable" description="No classes found for this school yet." />
@@ -54,10 +60,10 @@ export default function TimetablePage() {
         description={`Weekly class schedule builder for ${school.name}.`}
         actions={
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => toast.success('Timetable sent to printer')}>
+            <Button variant="outline" onClick={() => window.print()}>
               <Printer className="size-4" /> Print
             </Button>
-            <Button onClick={() => toast.success('Timetable auto-generated')}>
+            <Button onClick={handleAutoGenerate}>
               <Wand2 className="size-4" /> Auto-generate
             </Button>
           </div>

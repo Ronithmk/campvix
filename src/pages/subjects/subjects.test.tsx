@@ -4,9 +4,12 @@ import userEvent from '@testing-library/user-event'
 import SubjectsPage from './subjects'
 import { subjects as mockSubjects } from '@/mock/subjects'
 import { teachers } from '@/mock/teachers'
+import { schools } from '@/mock/schools'
+import { useAuthStore } from '@/store/auth-store'
 
 beforeEach(() => {
   localStorage.clear()
+  useAuthStore.setState({ schoolId: schools[0].id })
 })
 
 describe('SubjectsPage — rendering', () => {
@@ -21,9 +24,40 @@ describe('SubjectsPage — rendering', () => {
   it('shows the teacher assignment count matching the underlying mock data', () => {
     render(<SubjectsPage />)
     const subject = mockSubjects[0]
-    const assignedCount = teachers.filter((t) => t.subjects.includes(subject.name)).length
+    const assignedCount = teachers.filter((t) => t.schoolId === schools[0].id && t.subjects.includes(subject.name)).length
 
-    expect(screen.getByText(new RegExp(`${assignedCount} teachers? assigned`, 'i'))).toBeInTheDocument()
+    const card = screen.getByText(subject.name).closest('[data-slot="card"]') as HTMLElement
+    expect(within(card).getByText(new RegExp(`${assignedCount} teachers? assigned`, 'i'))).toBeInTheDocument()
+  })
+
+  it('recomputes the teacher assignment count after switching the active school', () => {
+    const subject = mockSubjects[0]
+    const countForSchool = (schoolId: string) => teachers.filter((t) => t.schoolId === schoolId && t.subjects.includes(subject.name)).length
+
+    const { rerender } = render(<SubjectsPage />)
+    let card = screen.getByText(subject.name).closest('[data-slot="card"]') as HTMLElement
+    expect(within(card).getByText(new RegExp(`${countForSchool(schools[0].id)} teachers? assigned`, 'i'))).toBeInTheDocument()
+
+    useAuthStore.setState({ schoolId: schools[1].id })
+    rerender(<SubjectsPage />)
+    card = screen.getByText(subject.name).closest('[data-slot="card"]') as HTMLElement
+    expect(within(card).getByText(new RegExp(`${countForSchool(schools[1].id)} teachers? assigned`, 'i'))).toBeInTheDocument()
+  })
+})
+
+describe('SubjectsPage — creates a new subject', () => {
+  it('adds a new subject card to the catalog', async () => {
+    const user = userEvent.setup()
+    render(<SubjectsPage />)
+
+    await user.click(screen.getByRole('button', { name: 'Add Subject' }))
+    await user.type(screen.getByLabelText(/subject name/i), 'Economics')
+    await user.type(screen.getByLabelText(/code/i), 'eco')
+    await user.click(screen.getByRole('button', { name: 'Add subject' }))
+
+    expect(await screen.findByText('Economics')).toBeInTheDocument()
+    const card = screen.getByText('Economics').closest('[data-slot="card"]') as HTMLElement
+    expect(within(card).getByText('ECO')).toBeInTheDocument()
   })
 })
 
