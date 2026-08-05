@@ -1,0 +1,6 @@
+export * from './role'
+export * from './school'
+export * from './academic'
+export * from './people'
+export * from './activity'
+export * from './operations'

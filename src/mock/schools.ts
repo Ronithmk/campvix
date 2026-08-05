@@ -1,0 +1,40 @@
+import type { School } from '@/types'
+
+export const schools: School[] = [
+  {
+    id: 'school-1',
+    name: 'Riverside International School',
+    slug: 'riverside',
+    logoUrl: '',
+    city: 'Bengaluru',
+    country: 'India',
+    primaryColor: '#2563eb',
+    plan: 'enterprise',
+    studentCount: 500,
+    establishedYear: 1998,
+  },
+  {
+    id: 'school-2',
+    name: 'Northfield Public School',
+    slug: 'northfield',
+    logoUrl: '',
+    city: 'Pune',
+    country: 'India',
+    primaryColor: '#7c3aed',
+    plan: 'growth',
+    studentCount: 220,
+    establishedYear: 2006,
+  },
+  {
+    id: 'school-3',
+    name: 'Sunrise Global Academy',
+    slug: 'sunrise',
+    logoUrl: '',
+    city: 'Hyderabad',
+    country: 'India',
+    primaryColor: '#059669',
+    plan: 'starter',
+    studentCount: 90,
+    establishedYear: 2015,
+  },
+]
