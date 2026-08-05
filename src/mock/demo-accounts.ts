@@ -126,5 +126,7 @@ export function findDemoAccount(email: string, password: string): DemoAccount | 
 }
 
 export function demoAccountForRole(role: Role): DemoAccount {
-  return DEMO_ACCOUNTS.find((a) => a.role === role) ?? DEMO_ACCOUNTS[0]
+  const account = DEMO_ACCOUNTS.find((a) => a.role === role)
+  if (!account) throw new Error(`No demo account configured for role "${role}"`)
+  return account
 }

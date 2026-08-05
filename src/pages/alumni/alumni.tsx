@@ -12,10 +12,13 @@ import { Input } from '@/components/ui/input'
 import { DeleteConfirm } from '@/components/shared/delete-confirm'
 import { alumni as mockAlumni } from '@/mock/platform'
 import { initials } from '@/lib/utils'
+import { useActiveSchool } from '@/hooks/use-active-school'
 import type { AlumniProfile } from '@/types'
 
 export default function AlumniPage() {
-  const [alumni, setAlumni] = useState<AlumniProfile[]>(mockAlumni)
+  const school = useActiveSchool()
+  const [allAlumni, setAllAlumni] = useState<AlumniProfile[]>(mockAlumni)
+  const alumni = useMemo(() => allAlumni.filter((a) => a.schoolId === school.id), [allAlumni, school.id])
   const [search, setSearch] = useState('')
   const [yearFilter, setYearFilter] = useState('all')
   const years = Array.from(new Set(alumni.map((a) => a.graduationYear))).sort((a, b) => b - a)
@@ -28,7 +31,7 @@ export default function AlumniPage() {
   const donors = alumni.filter((a) => a.donated).length
 
   function handleDelete(id: string, name: string) {
-    setAlumni((prev) => prev.filter((a) => a.id !== id))
+    setAllAlumni((prev) => prev.filter((a) => a.id !== id))
     toast.success(`${name} was removed`)
   }
 

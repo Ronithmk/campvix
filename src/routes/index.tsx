@@ -1,3 +1,4 @@
+import { lazy } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from '@/layouts/app-shell'
 import { ProtectedRoute } from '@/routes/protected-route'
@@ -8,57 +9,57 @@ import ForgotPasswordPage from '@/pages/auth/forgot-password'
 import OtpVerificationPage from '@/pages/auth/otp-verification'
 import ResetPasswordPage from '@/pages/auth/reset-password'
 import ChooseSchoolPage from '@/pages/auth/choose-school'
-
-import DashboardPage from '@/pages/dashboard'
-import StudentsListPage from '@/pages/students/students-list'
-import StudentProfilePage from '@/pages/students/student-profile'
-import TeachersListPage from '@/pages/teachers/teachers-list'
-import AttendancePage from '@/pages/attendance'
-import AdmissionsPage from '@/pages/admissions/admissions'
-import StaffPage from '@/pages/staff/staff'
-import ParentsPage from '@/pages/parents/parents'
-import ClassesPage from '@/pages/classes/classes'
-import SectionsPage from '@/pages/sections/sections'
-import SubjectsPage from '@/pages/subjects/subjects'
-import TimetablePage from '@/pages/timetable/timetable'
-import ExaminationsPage from '@/pages/examinations/examinations'
-import ResultsPage from '@/pages/results/results'
-import AssignmentsPage from '@/pages/assignments/assignments'
-import HomeworkPage from '@/pages/homework/homework'
-import LibraryPage from '@/pages/library/library'
-import TransportPage from '@/pages/transport/transport'
-import GpsTrackingPage from '@/pages/transport/gps-tracking'
-import HostelPage from '@/pages/hostel/hostel'
-import InventoryPage from '@/pages/inventory/inventory'
-
-import FeeManagementPage from '@/pages/finance/fee-management'
-import PaymentsPage from '@/pages/finance/payments'
-import InvoicesPage from '@/pages/finance/invoices'
-import PayrollPage from '@/pages/finance/payroll'
-
-import CalendarPage from '@/pages/calendar'
-import NotificationsPage from '@/pages/notifications'
-import EventsPage from '@/pages/events/events'
-import AnnouncementsPage from '@/pages/announcements/announcements'
-import NoticeBoardPage from '@/pages/notice-board/notice-board'
-import ChatPage from '@/pages/chat/chat'
-
-import ReportsPage from '@/pages/reports/reports'
-import AnalyticsPage from '@/pages/analytics/analytics'
-
-import AiAssistantPage from '@/pages/ai-assistant/ai-assistant'
-import AlumniPage from '@/pages/alumni/alumni'
-import LmsPage from '@/pages/lms/lms'
-import DocumentsPage from '@/pages/documents/documents'
-import EmailTemplatesPage from '@/pages/email-templates/email-templates'
-import GalleryPage from '@/pages/gallery/gallery'
-
-import SettingsPage from '@/pages/settings/settings'
-import SchoolsSettingsPage from '@/pages/settings/schools'
-import IdCardsPage from '@/pages/id-cards/id-cards'
-import ProfilePage from '@/pages/profile'
-import SupportPage from '@/pages/support'
 import NotFoundPage from '@/pages/not-found'
+
+const DashboardPage = lazy(() => import('@/pages/dashboard'))
+const StudentsListPage = lazy(() => import('@/pages/students/students-list'))
+const StudentProfilePage = lazy(() => import('@/pages/students/student-profile'))
+const TeachersListPage = lazy(() => import('@/pages/teachers/teachers-list'))
+const AttendancePage = lazy(() => import('@/pages/attendance'))
+const AdmissionsPage = lazy(() => import('@/pages/admissions/admissions'))
+const StaffPage = lazy(() => import('@/pages/staff/staff'))
+const ParentsPage = lazy(() => import('@/pages/parents/parents'))
+const ClassesPage = lazy(() => import('@/pages/classes/classes'))
+const SectionsPage = lazy(() => import('@/pages/sections/sections'))
+const SubjectsPage = lazy(() => import('@/pages/subjects/subjects'))
+const TimetablePage = lazy(() => import('@/pages/timetable/timetable'))
+const ExaminationsPage = lazy(() => import('@/pages/examinations/examinations'))
+const ResultsPage = lazy(() => import('@/pages/results/results'))
+const AssignmentsPage = lazy(() => import('@/pages/assignments/assignments'))
+const HomeworkPage = lazy(() => import('@/pages/homework/homework'))
+const LibraryPage = lazy(() => import('@/pages/library/library'))
+const TransportPage = lazy(() => import('@/pages/transport/transport'))
+const GpsTrackingPage = lazy(() => import('@/pages/transport/gps-tracking'))
+const HostelPage = lazy(() => import('@/pages/hostel/hostel'))
+const InventoryPage = lazy(() => import('@/pages/inventory/inventory'))
+
+const FeeManagementPage = lazy(() => import('@/pages/finance/fee-management'))
+const PaymentsPage = lazy(() => import('@/pages/finance/payments'))
+const InvoicesPage = lazy(() => import('@/pages/finance/invoices'))
+const PayrollPage = lazy(() => import('@/pages/finance/payroll'))
+
+const CalendarPage = lazy(() => import('@/pages/calendar'))
+const NotificationsPage = lazy(() => import('@/pages/notifications'))
+const EventsPage = lazy(() => import('@/pages/events/events'))
+const AnnouncementsPage = lazy(() => import('@/pages/announcements/announcements'))
+const NoticeBoardPage = lazy(() => import('@/pages/notice-board/notice-board'))
+const ChatPage = lazy(() => import('@/pages/chat/chat'))
+
+const ReportsPage = lazy(() => import('@/pages/reports/reports'))
+const AnalyticsPage = lazy(() => import('@/pages/analytics/analytics'))
+
+const AiAssistantPage = lazy(() => import('@/pages/ai-assistant/ai-assistant'))
+const AlumniPage = lazy(() => import('@/pages/alumni/alumni'))
+const LmsPage = lazy(() => import('@/pages/lms/lms'))
+const DocumentsPage = lazy(() => import('@/pages/documents/documents'))
+const EmailTemplatesPage = lazy(() => import('@/pages/email-templates/email-templates'))
+const GalleryPage = lazy(() => import('@/pages/gallery/gallery'))
+
+const SettingsPage = lazy(() => import('@/pages/settings/settings'))
+const SchoolsSettingsPage = lazy(() => import('@/pages/settings/schools'))
+const IdCardsPage = lazy(() => import('@/pages/id-cards/id-cards'))
+const ProfilePage = lazy(() => import('@/pages/profile'))
+const SupportPage = lazy(() => import('@/pages/support'))
 
 export function AppRouter() {
   return (

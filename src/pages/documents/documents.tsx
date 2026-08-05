@@ -10,6 +10,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ConfirmDeleteDialog } from '@/components/shared/confirm-delete-dialog'
 import { documents as mockDocuments } from '@/mock/platform'
 import { formatDate } from '@/lib/utils'
+import { useActiveSchool } from '@/hooks/use-active-school'
 import type { DocumentItem, DocumentType } from '@/types'
 
 const TYPE_ICONS: Record<DocumentType, typeof FileText> = { pdf: FileText, doc: File, sheet: SheetIcon, image: Image, folder: Folder }
@@ -22,7 +23,9 @@ const TYPE_COLORS: Record<DocumentType, string> = {
 }
 
 export default function DocumentsPage() {
-  const [documents, setDocuments] = useState<DocumentItem[]>(mockDocuments)
+  const school = useActiveSchool()
+  const [allDocuments, setAllDocuments] = useState<DocumentItem[]>(mockDocuments)
+  const documents = useMemo(() => allDocuments.filter((d) => d.schoolId === school.id), [allDocuments, school.id])
   const [folderFilter, setFolderFilter] = useState('all')
   const [pendingDelete, setPendingDelete] = useState<DocumentItem | null>(null)
   const folders = Array.from(new Set(documents.map((d) => d.folder)))
@@ -32,7 +35,7 @@ export default function DocumentsPage() {
 
   function handleDelete() {
     if (!pendingDelete) return
-    setDocuments((prev) => prev.filter((d) => d.id !== pendingDelete.id))
+    setAllDocuments((prev) => prev.filter((d) => d.id !== pendingDelete.id))
     toast.success(`${pendingDelete.name} was deleted`)
     setPendingDelete(null)
   }

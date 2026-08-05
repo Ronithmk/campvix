@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { AlertTriangle, Bell, CheckCheck, CheckCircle2, Info, Trash2, XCircle } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
@@ -9,6 +9,7 @@ import { EmptyState } from '@/components/shared/empty-state'
 import { DeleteConfirm } from '@/components/shared/delete-confirm'
 import { notifications as initial } from '@/mock/notifications'
 import { cn } from '@/lib/utils'
+import { useActiveSchool } from '@/hooks/use-active-school'
 import type { NotificationKind } from '@/types'
 
 const ICONS: Record<NotificationKind, typeof Info> = { info: Info, success: CheckCircle2, warning: AlertTriangle, danger: XCircle }
@@ -27,11 +28,13 @@ function timeAgo(iso: string) {
 }
 
 export default function NotificationsPage() {
-  const [items, setItems] = useState(initial)
+  const school = useActiveSchool()
+  const [allItems, setAllItems] = useState(initial)
+  const items = useMemo(() => allItems.filter((n) => n.schoolId === school.id), [allItems, school.id])
   const unread = items.filter((n) => !n.read)
 
   function handleDelete(id: string) {
-    setItems((prev) => prev.filter((n) => n.id !== id))
+    setAllItems((prev) => prev.filter((n) => n.id !== id))
     toast.success('Notification deleted')
   }
 
@@ -44,7 +47,7 @@ export default function NotificationsPage() {
           return (
             <div
               key={n.id}
-              onClick={() => setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)))}
+              onClick={() => setAllItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)))}
               className={cn('flex cursor-pointer items-start gap-3 px-2 py-4 text-left transition-colors hover:bg-secondary/40', !n.read && 'bg-primary/[0.03]')}
             >
               <span className={cn('flex size-10 shrink-0 items-center justify-center rounded-full', ICON_STYLES[n.kind])}>
@@ -76,7 +79,7 @@ export default function NotificationsPage() {
         title="Notifications"
         description="Stay on top of everything happening across your school."
         actions={
-          <Button variant="outline" onClick={() => setItems((prev) => prev.map((n) => ({ ...n, read: true })))}>
+          <Button variant="outline" onClick={() => setAllItems((prev) => prev.map((n) => (n.schoolId === school.id ? { ...n, read: true } : n)))}>
             <CheckCheck className="size-4" /> Mark all read
           </Button>
         }

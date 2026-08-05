@@ -94,8 +94,8 @@ export default function DashboardPage() {
   }, [schoolClasses])
 
   const birthdaysThisWeek = schoolStudents.slice(2, 5)
-  const upcomingEvents = calendarEvents.slice(0, 4)
-  const recentNotifications = notifications.slice(0, 4)
+  const upcomingEvents = calendarEvents.filter((e) => e.schoolId === school.id).slice(0, 4)
+  const recentNotifications = notifications.filter((n) => n.schoolId === school.id).slice(0, 4)
   const latestPayments = schoolPayments.slice(0, 5)
   const todaysClasses = schoolClasses.slice(0, 4).map((c, i) => ({
     class: c.name,

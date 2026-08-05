@@ -58,6 +58,24 @@ export interface NavSection {
   items: NavItem[]
 }
 
+/**
+ * Action-level permission keys, e.g. "who can click New Course" — a separate
+ * axis from page access (NavItem) but stored in the same PermissionMap and
+ * edited from the same Settings > Role Permissions matrix. Key format:
+ * "action:<module>:<verb>", checked via usePermissionsStore.hasAccess(role, key)
+ * exactly like a page URL.
+ */
+export interface ActionPermission {
+  key: string
+  title: string
+  roles: Role[]
+}
+
+export interface ActionPermissionSection {
+  title: string
+  items: ActionPermission[]
+}
+
 const ALL_STAFF: Role[] = ['administrator', 'principal', 'teacher', 'accountant', 'receptionist', 'librarian']
 const LEADERSHIP: Role[] = ['administrator', 'principal']
 
@@ -149,6 +167,20 @@ export const NAV_SECTIONS: NavSection[] = [
     ],
   },
 ]
+
+export const ACTION_PERMISSION_SECTIONS: ActionPermissionSection[] = [
+  {
+    title: 'Content creation',
+    items: [
+      { key: 'action:lms:create', title: 'Create Course', roles: ['administrator', 'teacher'] },
+      { key: 'action:gallery:create', title: 'Create Album', roles: ['administrator', 'teacher'] },
+    ],
+  },
+]
+
+export function getAllActionPermissions(): ActionPermission[] {
+  return ACTION_PERMISSION_SECTIONS.flatMap((section) => section.items)
+}
 
 export function getNavForRole(role: Role | null, allowedUrls?: string[]): NavSection[] {
   if (!role) return NAV_SECTIONS

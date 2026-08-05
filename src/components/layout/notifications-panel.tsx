@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { notifications as initialNotifications } from '@/mock/notifications'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { cn } from '@/lib/utils'
+import { useActiveSchool } from '@/hooks/use-active-school'
 import type { NotificationKind } from '@/types'
 
 const ICONS: Record<NotificationKind, typeof Info> = {
@@ -31,7 +32,9 @@ function timeAgo(iso: string) {
 }
 
 export function NotificationsPanel() {
-  const [items, setItems] = useState(initialNotifications)
+  const school = useActiveSchool()
+  const [allItems, setAllItems] = useState(initialNotifications)
+  const items = useMemo(() => allItems.filter((n) => n.schoolId === school.id), [allItems, school.id])
   const unread = items.filter((n) => !n.read).length
 
   return (
@@ -48,7 +51,7 @@ export function NotificationsPanel() {
             <p className="text-sm font-semibold text-foreground">Notifications</p>
             <p className="text-xs text-muted-foreground">{unread} unread</p>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => setItems((prev) => prev.map((n) => ({ ...n, read: true })))}>
+          <Button variant="ghost" size="sm" onClick={() => setAllItems((prev) => prev.map((n) => (n.schoolId === school.id ? { ...n, read: true } : n)))}>
             <CheckCheck className="size-3.5" /> Mark all read
           </Button>
         </div>
@@ -60,7 +63,7 @@ export function NotificationsPanel() {
               return (
                 <button
                   key={n.id}
-                  onClick={() => setItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)))}
+                  onClick={() => setAllItems((prev) => prev.map((x) => (x.id === n.id ? { ...x, read: true } : x)))}
                   className={cn('flex items-start gap-3 border-b border-border px-4 py-3 text-left transition-colors hover:bg-secondary/50', !n.read && 'bg-primary/[0.03]')}
                 >
                   <span className={cn('flex size-8 shrink-0 items-center justify-center rounded-full', ICON_STYLES[n.kind])}>

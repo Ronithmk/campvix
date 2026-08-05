@@ -11,11 +11,12 @@ export function RoleProtectedRoute() {
   const hasAccess = usePermissionsStore((s) => s.hasAccess)
 
   const navItem = findNavItemForPath(location.pathname)
-  const denied = !!(role && navItem && !hasAccess(role, navItem.url))
+  const denied = !!(role && (!navItem || !hasAccess(role, navItem.url)))
 
   useEffect(() => {
-    if (denied) toast.error(`Your role doesn't have access to ${navItem?.title}`)
-  }, [denied, navItem?.title])
+    if (!denied) return
+    toast.error(navItem ? `Your role doesn't have access to ${navItem.title}` : "You don't have access to that page")
+  }, [denied, navItem])
 
   if (denied) return <Navigate to="/app/dashboard" replace />
 

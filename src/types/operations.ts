@@ -182,6 +182,7 @@ export interface ChatThread {
 
 export interface AlumniProfile {
   id: string
+  schoolId: string
   name: string
   avatarUrl: string
   graduationYear: number
@@ -197,6 +198,7 @@ export type CourseStatus = 'draft' | 'published' | 'archived'
 
 export interface Course {
   id: string
+  schoolId: string
   title: string
   subjectId: string
   instructor: string
@@ -212,6 +214,7 @@ export type DocumentType = 'pdf' | 'doc' | 'sheet' | 'image' | 'folder'
 
 export interface DocumentItem {
   id: string
+  schoolId: string
   name: string
   type: DocumentType
   size: string
@@ -223,6 +226,7 @@ export interface DocumentItem {
 
 export interface EmailTemplate {
   id: string
+  schoolId: string
   name: string
   subject: string
   category: 'fee_reminder' | 'admission' | 'attendance' | 'exam' | 'general'
@@ -233,6 +237,7 @@ export interface EmailTemplate {
 
 export interface GalleryAlbum {
   id: string
+  schoolId: string
   title: string
   coverColor: string
   eventDate: string

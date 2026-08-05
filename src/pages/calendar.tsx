@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { DayPicker } from 'react-day-picker'
 import { CalendarClock, MapPin, Plus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { DeleteConfirm } from '@/components/shared/delete-confirm'
 import { calendarEvents as mockEvents } from '@/mock/notifications'
 import { formatDate } from '@/lib/utils'
+import { useActiveSchool } from '@/hooks/use-active-school'
 import type { CalendarEvent } from '@/types'
 
 const TYPE_VARIANT: Record<CalendarEvent['type'], 'default' | 'success' | 'warning' | 'destructive' | 'accent'> = {
@@ -20,11 +21,13 @@ const TYPE_VARIANT: Record<CalendarEvent['type'], 'default' | 'success' | 'warni
 }
 
 export default function CalendarPage() {
+  const school = useActiveSchool()
   const [selected, setSelected] = useState<Date | undefined>(new Date())
-  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(mockEvents)
+  const [allEvents, setAllEvents] = useState<CalendarEvent[]>(mockEvents)
+  const calendarEvents = useMemo(() => allEvents.filter((e) => e.schoolId === school.id), [allEvents, school.id])
 
   function handleDelete(id: string, title: string) {
-    setCalendarEvents((prev) => prev.filter((e) => e.id !== id))
+    setAllEvents((prev) => prev.filter((e) => e.id !== id))
     toast.success(`${title} was deleted`)
   }
 

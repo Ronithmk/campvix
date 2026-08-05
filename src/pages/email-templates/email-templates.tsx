@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { Mail, Send, Plus, Trash2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
@@ -12,16 +12,19 @@ import { DeleteConfirm } from '@/components/shared/delete-confirm'
 import { emailTemplates as mockTemplates } from '@/mock/platform'
 import type { EmailTemplate } from '@/types'
 import { formatDate, formatNumber } from '@/lib/utils'
+import { useActiveSchool } from '@/hooks/use-active-school'
 
 const CATEGORY_LABELS: Record<string, string> = { fee_reminder: 'Fee Reminder', admission: 'Admission', attendance: 'Attendance', exam: 'Exam', general: 'General' }
 
 export default function EmailTemplatesPage() {
-  const [emailTemplates, setEmailTemplates] = useState<EmailTemplate[]>(mockTemplates)
+  const school = useActiveSchool()
+  const [allTemplates, setAllTemplates] = useState<EmailTemplate[]>(mockTemplates)
+  const emailTemplates = useMemo(() => allTemplates.filter((t) => t.schoolId === school.id), [allTemplates, school.id])
   const [preview, setPreview] = useState<EmailTemplate | null>(null)
   const totalSent = emailTemplates.reduce((sum, t) => sum + t.sentCount, 0)
 
   function handleDelete(id: string, name: string) {
-    setEmailTemplates((prev) => prev.filter((t) => t.id !== id))
+    setAllTemplates((prev) => prev.filter((t) => t.id !== id))
     toast.success(`${name} was deleted`)
   }
 

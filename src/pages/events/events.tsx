@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { PartyPopper, CalendarDays, MapPin, Plus, Clock, Trash2 } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { DeleteConfirm } from '@/components/shared/delete-confirm'
 import { calendarEvents as mockEvents } from '@/mock/notifications'
 import { formatDate } from '@/lib/utils'
+import { useActiveSchool } from '@/hooks/use-active-school'
 import type { CalendarEvent } from '@/types'
 
 const TYPE_VARIANT: Record<CalendarEvent['type'], 'default' | 'success' | 'warning' | 'destructive' | 'accent'> = {
@@ -20,11 +21,13 @@ const TYPE_VARIANT: Record<CalendarEvent['type'], 'default' | 'success' | 'warni
 }
 
 export default function EventsPage() {
-  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(mockEvents)
+  const school = useActiveSchool()
+  const [allEvents, setAllEvents] = useState<CalendarEvent[]>(mockEvents)
+  const calendarEvents = useMemo(() => allEvents.filter((e) => e.schoolId === school.id), [allEvents, school.id])
   const upcoming = calendarEvents.filter((e) => e.type === 'event' || e.type === 'sports')
 
   function handleDelete(id: string, title: string) {
-    setCalendarEvents((prev) => prev.filter((e) => e.id !== id))
+    setAllEvents((prev) => prev.filter((e) => e.id !== id))
     toast.success(`${title} was deleted`)
   }
 

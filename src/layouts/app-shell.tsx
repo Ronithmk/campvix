@@ -1,8 +1,10 @@
+import { Suspense } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Sidebar } from '@/components/layout/sidebar'
 import { Topbar } from '@/components/layout/topbar'
 import { CommandPalette } from '@/components/layout/command-palette'
+import { RouteErrorBoundary, RouteLoadingFallback } from '@/components/shared/route-boundary'
 
 export function AppShell() {
   const location = useLocation()
@@ -22,7 +24,11 @@ export function AppShell() {
               transition={{ duration: 0.18, ease: 'easeOut' }}
               className="mx-auto w-full max-w-[1600px]"
             >
-              <Outlet />
+              <RouteErrorBoundary>
+                <Suspense fallback={<RouteLoadingFallback />}>
+                  <Outlet />
+                </Suspense>
+              </RouteErrorBoundary>
             </motion.div>
           </AnimatePresence>
         </main>

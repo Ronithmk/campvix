@@ -1,6 +1,6 @@
 import { Fragment } from 'react'
 import { toast } from 'sonner'
-import { Building2, Palette, ShieldCheck, Bell, Plug, CalendarRange, Save, RotateCcw } from 'lucide-react'
+import { Building2, Palette, ShieldCheck, Bell, Plug, CalendarRange, Save, RotateCcw, Zap } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -12,7 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Separator } from '@/components/ui/separator'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { schools } from '@/mock/schools'
-import { NAV_SECTIONS } from '@/app/nav-config'
+import { NAV_SECTIONS, ACTION_PERMISSION_SECTIONS } from '@/app/nav-config'
 import { usePermissionsStore } from '@/store/permissions-store'
 import { ROLES, ROLE_LABELS } from '@/types'
 
@@ -201,7 +201,7 @@ function RolePermissionsMatrix() {
       <CardHeader className="flex-row items-center justify-between">
         <div>
           <CardTitle>Role-based access control</CardTitle>
-          <CardDescription>Choose exactly which modules each role can see and open. Administrator always has full access.</CardDescription>
+          <CardDescription>Choose exactly which modules each role can see and open, and which actions they can perform. Administrator always has full access.</CardDescription>
         </div>
         <Button
           variant="outline"
@@ -245,6 +245,31 @@ function RolePermissionsMatrix() {
                       {EDITABLE_ROLES.map((role) => (
                         <td key={role} className="p-3 text-center">
                           <Checkbox checked={hasAccess(role, item.url)} onCheckedChange={() => toggleAccess(role, item.url)} />
+                        </td>
+                      ))}
+                      <td className="p-3 text-center">
+                        <Checkbox checked disabled />
+                      </td>
+                    </tr>
+                  ))}
+                </Fragment>
+              ))}
+              {ACTION_PERMISSION_SECTIONS.map((section) => (
+                <Fragment key={section.title}>
+                  <tr className="border-b border-border bg-secondary/20">
+                    <td colSpan={EDITABLE_ROLES.length + 2} className="px-3 py-1.5 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+                      {section.title}
+                    </td>
+                  </tr>
+                  {section.items.map((item) => (
+                    <tr key={item.key} className="border-b border-border last:border-0 hover:bg-secondary/20">
+                      <td className="sticky left-0 z-10 flex items-center gap-2 bg-card p-3 text-foreground">
+                        <Zap className="size-3.5 text-muted-foreground" />
+                        {item.title}
+                      </td>
+                      {EDITABLE_ROLES.map((role) => (
+                        <td key={role} className="p-3 text-center">
+                          <Checkbox checked={hasAccess(role, item.key)} onCheckedChange={() => toggleAccess(role, item.key)} />
                         </td>
                       ))}
                       <td className="p-3 text-center">

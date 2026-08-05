@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -15,13 +15,13 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { courses as mockCourses } from '@/mock/platform'
+import { courses as mockCourses, THUMB_COLORS } from '@/mock/platform'
 import { subjects } from '@/mock/subjects'
 import { sleep } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth-store'
+import { usePermissionsStore } from '@/store/permissions-store'
+import { useActiveSchool } from '@/hooks/use-active-school'
 import type { Course } from '@/types'
-
-const THUMB_COLORS = ['#2563eb', '#059669', '#d97706', '#7c3aed', '#dc2626', '#0891b2']
 
 const courseSchema = z.object({
   title: z.string().min(2, 'Title is required'),
@@ -34,11 +34,14 @@ type CourseValues = z.infer<typeof courseSchema>
 
 export default function LmsPage() {
   const role = useAuthStore((s) => s.role)
-  const canCreate = role === 'administrator' || role === 'teacher'
+  const hasAccess = usePermissionsStore((s) => s.hasAccess)
+  const canCreate = !!role && hasAccess(role, 'action:lms:create')
+  const school = useActiveSchool()
   const [courses, setCourses] = useState<Course[]>(mockCourses)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const published = courses.filter((c) => c.status === 'published').length
-  const totalEnrolled = courses.reduce((sum, c) => sum + c.enrolledCount, 0)
+  const schoolCourses = useMemo(() => courses.filter((c) => c.schoolId === school.id), [courses, school.id])
+  const published = schoolCourses.filter((c) => c.status === 'published').length
+  const totalEnrolled = schoolCourses.reduce((sum, c) => sum + c.enrolledCount, 0)
 
   const form = useForm<CourseValues>({ resolver: zodResolver(courseSchema), defaultValues: { title: '', subjectId: '', instructor: '', duration: '8 weeks' } })
 
@@ -46,10 +49,11 @@ export default function LmsPage() {
     await sleep(500)
     const newCourse: Course = {
       id: `course-new-${Date.now()}`,
+      schoolId: school.id,
       title: values.title,
       subjectId: values.subjectId,
       instructor: values.instructor,
-      thumbnail: THUMB_COLORS[courses.length % THUMB_COLORS.length],
+      thumbnail: THUMB_COLORS[schoolCourses.length % THUMB_COLORS.length],
       lessonsCount: 0,
       enrolledCount: 0,
       progress: 0,
@@ -165,13 +169,13 @@ export default function LmsPage() {
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard index={0} label="Total Courses" value={String(courses.length)} icon={Video} accent="primary" change={0} />
+        <StatCard index={0} label="Total Courses" value={String(schoolCourses.length)} icon={Video} accent="primary" change={0} />
         <StatCard index={1} label="Published" value={String(published)} icon={PlayCircle} accent="accent" change={0} />
         <StatCard index={2} label="Total Enrollments" value={String(totalEnrolled)} icon={Users} accent="warning" change={5.8} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {courses.map((course) => (
+        {schoolCourses.map((course) => (
           <Card key={course.id} className="overflow-hidden transition-shadow hover:shadow-md">
             <div className="relative flex h-28 items-center justify-center" style={{ background: `${course.thumbnail}1a` }}>
               <PlayCircle className="size-9" style={{ color: course.thumbnail }} />

@@ -57,7 +57,16 @@ export const useAuthStore = create<AuthState>()(
       setSchool: (schoolId) => set({ schoolId }),
       logout: () => set({ isAuthenticated: false, role: null, personId: null }),
     }),
-    { name: 'campusflow-auth' },
+    {
+      name: 'campusflow-auth',
+      version: 1,
+      // A stale session shape from before a breaking change (e.g. a field the
+      // current session-building logic depends on) is safer forced back to
+      // logged-out than trusted as-is — one extra login beats silently broken state.
+      // Returning {} lets zustand's default merge fall through entirely to the
+      // store's fresh initial state (logged out).
+      migrate: (persisted, version) => (version < 1 ? ({} as AuthState) : (persisted as AuthState)),
+    },
   ),
 )
 

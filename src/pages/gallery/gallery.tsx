@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -14,12 +14,12 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
-import { galleryAlbums as mockAlbums } from '@/mock/platform'
+import { galleryAlbums as mockAlbums, COVER_COLORS } from '@/mock/platform'
 import { formatDate, formatNumber, sleep } from '@/lib/utils'
 import { useAuthStore } from '@/store/auth-store'
+import { usePermissionsStore } from '@/store/permissions-store'
+import { useActiveSchool } from '@/hooks/use-active-school'
 import type { GalleryAlbum } from '@/types'
-
-const COVER_COLORS = ['#2563eb', '#059669', '#d97706', '#dc2626', '#7c3aed', '#0891b2', '#db2777', '#16a34a']
 
 const albumSchema = z.object({
   title: z.string().min(2, 'Title is required'),
@@ -31,11 +31,14 @@ type AlbumValues = z.infer<typeof albumSchema>
 
 export default function GalleryPage() {
   const role = useAuthStore((s) => s.role)
-  const canCreate = role === 'administrator' || role === 'teacher'
+  const hasAccess = usePermissionsStore((s) => s.hasAccess)
+  const canCreate = !!role && hasAccess(role, 'action:gallery:create')
+  const school = useActiveSchool()
   const [galleryAlbums, setGalleryAlbums] = useState<GalleryAlbum[]>(mockAlbums)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const totalPhotos = galleryAlbums.reduce((sum, a) => sum + a.photoCount, 0)
-  const publicAlbums = galleryAlbums.filter((a) => a.isPublic).length
+  const schoolAlbums = useMemo(() => galleryAlbums.filter((a) => a.schoolId === school.id), [galleryAlbums, school.id])
+  const totalPhotos = schoolAlbums.reduce((sum, a) => sum + a.photoCount, 0)
+  const publicAlbums = schoolAlbums.filter((a) => a.isPublic).length
 
   const form = useForm<AlbumValues>({
     resolver: zodResolver(albumSchema),
@@ -46,8 +49,9 @@ export default function GalleryPage() {
     await sleep(500)
     const newAlbum: GalleryAlbum = {
       id: `album-new-${Date.now()}`,
+      schoolId: school.id,
       title: values.title,
-      coverColor: COVER_COLORS[galleryAlbums.length % COVER_COLORS.length],
+      coverColor: COVER_COLORS[schoolAlbums.length % COVER_COLORS.length],
       eventDate: new Date(values.eventDate).toISOString(),
       photoCount: 0,
       isPublic: values.isPublic,
@@ -139,13 +143,13 @@ export default function GalleryPage() {
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <StatCard index={0} label="Total Albums" value={String(galleryAlbums.length)} icon={Images} accent="primary" change={0} />
+        <StatCard index={0} label="Total Albums" value={String(schoolAlbums.length)} icon={Images} accent="primary" change={0} />
         <StatCard index={1} label="Total Photos" value={formatNumber(totalPhotos)} icon={Camera} accent="accent" change={8.9} />
         <StatCard index={2} label="Public Albums" value={String(publicAlbums)} icon={Globe} accent="warning" change={0} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {galleryAlbums.map((album) => (
+        {schoolAlbums.map((album) => (
           <Card key={album.id} className="overflow-hidden transition-shadow hover:shadow-md">
             <div className="relative flex h-32 items-center justify-center" style={{ background: `linear-gradient(135deg, ${album.coverColor}, ${album.coverColor}99)` }}>
               <Images className="size-8 text-white/90" />

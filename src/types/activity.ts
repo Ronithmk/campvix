@@ -2,6 +2,7 @@ export type NotificationKind = 'info' | 'success' | 'warning' | 'danger'
 
 export interface AppNotification {
   id: string
+  schoolId: string
   title: string
   description: string
   kind: NotificationKind
@@ -11,6 +12,7 @@ export interface AppNotification {
 
 export interface ActivityItem {
   id: string
+  schoolId: string
   actor: string
   actorAvatar: string
   action: string
@@ -20,6 +22,7 @@ export interface ActivityItem {
 
 export interface CalendarEvent {
   id: string
+  schoolId: string
   title: string
   date: string
   time: string
