@@ -8,8 +8,13 @@ import { classes } from '@/mock/classes'
 import { subjects } from '@/mock/subjects'
 import { formatDate } from '@/lib/utils'
 
-export function getExamColumns(onDelete: (exam: Exam) => void): ColumnDef<Exam, unknown>[] {
-  return [
+export function getExamColumns(onDelete?: (exam: Exam) => void): ColumnDef<Exam, unknown>[] {
+  const columns: ColumnDef<Exam, unknown>[] = [
+  ]
+
+  if (!onDelete) return columns
+
+  return [...columns,
   {
     id: 'name',
     accessorKey: 'name',

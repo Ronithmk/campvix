@@ -19,8 +19,13 @@ const GRADE_VARIANT: Record<string, 'success' | 'accent' | 'warning' | 'destruct
   D: 'destructive',
 }
 
-export function getResultColumns(onDelete: (result: Result) => void): ColumnDef<Result, unknown>[] {
-  return [
+export function getResultColumns(onDelete?: (result: Result) => void): ColumnDef<Result, unknown>[] {
+  const columns: ColumnDef<Result, unknown>[] = [
+  ]
+
+  if (!onDelete) return columns
+
+  return [...columns,
   {
     id: 'studentId',
     accessorFn: (row) => students.find((s) => s.id === row.studentId)?.name ?? '',

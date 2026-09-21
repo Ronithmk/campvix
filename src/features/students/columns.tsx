@@ -10,8 +10,8 @@ import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { initials } from '@/lib/utils'
 
-export function getStudentColumns(onDelete: (student: Student) => void): ColumnDef<Student, unknown>[] {
-  return [
+export function getStudentColumns(onDelete?: (student: Student) => void): ColumnDef<Student, unknown>[] {
+  const columns: ColumnDef<Student, unknown>[] = [
   {
     id: 'select',
     header: ({ table }) => <Checkbox checked={table.getIsAllPageRowsSelected()} onCheckedChange={(v) => table.toggleAllPageRowsSelected(!!v)} aria-label="Select all" />,
@@ -77,6 +77,11 @@ export function getStudentColumns(onDelete: (student: Student) => void): ColumnD
     header: 'Status',
     cell: ({ getValue }) => <StatusBadge status={getValue() as string} />,
   },
+  ]
+
+  if (!onDelete) return columns.filter((column) => column.id !== 'select' && column.id !== 'actions')
+
+  return [...columns,
   {
     id: 'actions',
     header: '',

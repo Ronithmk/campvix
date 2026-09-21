@@ -15,6 +15,7 @@ import { students } from '@/mock/students'
 import { attendanceRecords, buildAttendanceTrend } from '@/mock/attendance'
 import type { AttendanceStatus } from '@/types'
 import { useActiveSchool } from '@/hooks/use-active-school'
+import { useAuthStore } from '@/store/auth-store'
 
 const STATUS_OPTIONS: { value: AttendanceStatus; label: string; icon: typeof Check }[] = [
   { value: 'present', label: 'Present', icon: Check },
@@ -32,6 +33,9 @@ const STATUS_STYLES: Record<AttendanceStatus, string> = {
 
 export default function AttendancePage() {
   const school = useActiveSchool()
+  const role = useAuthStore((s) => s.role)
+  const personId = useAuthStore((s) => s.personId)
+  const canMarkAttendance = role === 'teacher'
   const classes = useMemo(() => allClasses.filter((c) => c.schoolId === school.id), [school.id])
   const [classId, setClassId] = useState(classes[0]?.id)
   const activeClassId = classes.some((c) => c.id === classId) ? classId : classes[0]?.id
@@ -39,6 +43,21 @@ export default function AttendancePage() {
   const [marks, setMarks] = useState<Record<string, AttendanceStatus>>(() => Object.fromEntries(classStudents.map((s) => [s.id, 'present'])))
   const schoolAttendance = useMemo(() => attendanceRecords.filter((a) => a.schoolId === school.id), [school.id])
   const attendanceTrend = useMemo(() => buildAttendanceTrend(schoolAttendance), [schoolAttendance])
+
+  const studentRecord = useMemo(() => {
+    if (role !== 'student' || !personId) return null
+    return students.find((student) => student.id === personId && student.schoolId === school.id) ?? null
+  }, [personId, role, school.id])
+
+  const personalAttendance = useMemo(() => {
+    if (!studentRecord) return []
+    return attendanceRecords.filter((record) => record.studentId === studentRecord.id && record.schoolId === school.id)
+  }, [school.id, studentRecord])
+
+  const personalTrend = useMemo(() => buildAttendanceTrend(personalAttendance), [personalAttendance])
+  const personalPresentCount = personalAttendance.filter((record) => record.status === 'present' || record.status === 'late').length
+  const personalAbsentCount = personalAttendance.filter((record) => record.status === 'absent').length
+  const personalExcusedCount = personalAttendance.filter((record) => record.status === 'excused').length
 
   function setMark(studentId: string, status: AttendanceStatus) {
     setMarks((prev) => ({ ...prev, [studentId]: status }))
@@ -52,6 +71,65 @@ export default function AttendancePage() {
 
   const presentCount = Object.values(marks).filter((m) => m === 'present').length
   const absentCount = Object.values(marks).filter((m) => m === 'absent').length
+
+  if (role === 'student' && studentRecord) {
+    return (
+      <div className="flex flex-col gap-6">
+        <PageHeader title="Attendance" description={`Your attendance report for ${school.name}.`} />
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-4">
+          <StatCard index={0} label="Present" value={String(personalPresentCount)} icon={Check} accent="accent" />
+          <StatCard index={1} label="Absent" value={String(personalAbsentCount)} icon={X} accent="destructive" />
+          <StatCard index={2} label="Excused" value={String(personalExcusedCount)} icon={UserX} accent="primary" />
+          <StatCard index={3} label="Overall" value={`${studentRecord.attendancePercent}%`} icon={CalendarCheck} accent="primary" />
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Your attendance</CardTitle>
+            <CardDescription>Personal attendance trend over the last 14 school days</CardDescription>
+          </CardHeader>
+          <CardContent className="h-52 pb-4">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={personalTrend} margin={{ left: -18, right: 12, top: 8 }}>
+                <defs>
+                  <linearGradient id="attFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--color-status-good)" stopOpacity={0.25} />
+                    <stop offset="100%" stopColor="var(--color-status-good)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid vertical={false} stroke="var(--border)" strokeDasharray="3 3" />
+                <XAxis dataKey="label" stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} interval={1} />
+                <YAxis stroke="var(--muted-foreground)" fontSize={11} tickLine={false} axisLine={false} domain={[0, 100]} width={32} />
+                <RechartsTooltip content={ChartTooltip} />
+                <Area type="monotone" dataKey="percent" name="Your %" stroke="var(--color-status-good)" strokeWidth={2.5} fill="url(#attFill)" dot={false} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent attendance</CardTitle>
+            <CardDescription>{studentRecord.name}'s recent check-ins</CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col divide-y divide-border pb-4">
+            {personalAttendance.slice(0, 7).map((record) => (
+              <div key={record.id} className="flex items-center justify-between gap-3 py-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground">{new Date(record.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                  <p className="text-xs text-muted-foreground">{record.status}</p>
+                </div>
+                <div className={cn('rounded-full border px-2.5 py-1 text-xs font-medium capitalize', STATUS_STYLES[record.status])}>
+                  {record.status}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -87,60 +165,62 @@ export default function AttendancePage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="flex-row items-center justify-between">
-          <div>
-            <CardTitle>Mark attendance</CardTitle>
-            <CardDescription>Select a class and tap a status for each student</CardDescription>
-          </div>
-          <div className="flex items-center gap-2">
-            <Select value={activeClassId} onValueChange={handleClassChange}>
-              <SelectTrigger className="w-44">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {classes.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button onClick={() => toast.success('Attendance saved for ' + classes.find((c) => c.id === activeClassId)?.name)}>
-              <Save className="size-4" /> Save
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="flex flex-col divide-y divide-border pb-4">
-          {classStudents.map((s) => (
-            <div key={s.id} className="flex items-center gap-3 py-2.5">
-              <Avatar className="size-8">
-                <AvatarImage src={s.avatarUrl} alt={s.name} />
-                <AvatarFallback>{initials(s.name)}</AvatarFallback>
-              </Avatar>
-              <div className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate text-sm font-medium text-foreground">{s.name}</span>
-                <span className="text-xs text-muted-foreground">Roll No. {s.rollNo}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                {STATUS_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.value}
-                    onClick={() => setMark(s.id, opt.value)}
-                    className={cn(
-                      'flex size-8 items-center justify-center rounded-lg border text-muted-foreground transition-all',
-                      marks[s.id] === opt.value ? STATUS_STYLES[opt.value] : 'border-border bg-card hover:bg-secondary',
-                    )}
-                    title={opt.label}
-                  >
-                    <opt.icon className="size-3.5" />
-                  </button>
-                ))}
-              </div>
+      {canMarkAttendance && (
+        <Card>
+          <CardHeader className="flex-row items-center justify-between">
+            <div>
+              <CardTitle>Mark attendance</CardTitle>
+              <CardDescription>Select a class and tap a status for each student</CardDescription>
             </div>
-          ))}
-        </CardContent>
-      </Card>
+            <div className="flex items-center gap-2">
+              <Select value={activeClassId} onValueChange={handleClassChange}>
+                <SelectTrigger className="w-44">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {classes.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button onClick={() => toast.success('Attendance saved for ' + classes.find((c) => c.id === activeClassId)?.name)}>
+                <Save className="size-4" /> Save
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="flex flex-col divide-y divide-border pb-4">
+            {classStudents.map((s) => (
+              <div key={s.id} className="flex items-center gap-3 py-2.5">
+                <Avatar className="size-8">
+                  <AvatarImage src={s.avatarUrl} alt={s.name} />
+                  <AvatarFallback>{initials(s.name)}</AvatarFallback>
+                </Avatar>
+                <div className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate text-sm font-medium text-foreground">{s.name}</span>
+                  <span className="text-xs text-muted-foreground">Roll No. {s.rollNo}</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {STATUS_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setMark(s.id, opt.value)}
+                      className={cn(
+                        'flex size-8 items-center justify-center rounded-lg border text-muted-foreground transition-all',
+                        marks[s.id] === opt.value ? STATUS_STYLES[opt.value] : 'border-border bg-card hover:bg-secondary',
+                      )}
+                      title={opt.label}
+                    >
+                      <opt.icon className="size-3.5" />
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

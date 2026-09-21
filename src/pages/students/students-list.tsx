@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input'
 import { formatNumber, sleep } from '@/lib/utils'
 import type { Student } from '@/types'
 import { useActiveSchool } from '@/hooks/use-active-school'
+import { useAuthStore } from '@/store/auth-store'
 
 const studentSchema = z.object({
   name: z.string().min(2, 'Name is required'),
@@ -31,6 +32,9 @@ type StudentValues = z.infer<typeof studentSchema>
 
 export default function StudentsListPage() {
   const school = useActiveSchool()
+  const role = useAuthStore((s) => s.role)
+  const personId = useAuthStore((s) => s.personId)
+  const canManageStudents = role !== 'parent'
   const [students, setStudents] = useState<Student[]>(mockStudents)
   const [classFilter, setClassFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -40,7 +44,10 @@ export default function StudentsListPage() {
   const form = useForm<StudentValues>({ resolver: zodResolver(studentSchema), defaultValues: { name: '', email: '', classId: '', parentName: '' } })
 
   const schoolClasses = useMemo(() => allClasses.filter((c) => c.schoolId === school.id), [school.id])
-  const schoolStudents = useMemo(() => students.filter((s) => s.schoolId === school.id), [students, school.id])
+  const schoolStudents = useMemo(
+    () => students.filter((s) => s.schoolId === school.id && (role !== 'parent' || (!!personId && s.parentId === personId))),
+    [personId, role, school.id, students],
+  )
 
   const filtered = useMemo(() => {
     return schoolStudents.filter((s) => (classFilter === 'all' || s.classId === classFilter) && (statusFilter === 'all' || s.status === statusFilter))
@@ -50,7 +57,7 @@ export default function StudentsListPage() {
   const avgAttendance = schoolStudents.length ? Math.round(schoolStudents.reduce((sum, s) => sum + s.attendancePercent, 0) / schoolStudents.length) : 0
   const overdueFees = schoolStudents.filter((s) => s.feeStatus === 'overdue').length
 
-  const columns = useMemo(() => getStudentColumns((student) => setPendingDelete(student)), [])
+  const columns = useMemo(() => getStudentColumns(canManageStudents ? (student) => setPendingDelete(student) : undefined), [canManageStudents])
 
   async function onSubmit(values: StudentValues) {
     await sleep(500)
@@ -98,8 +105,8 @@ export default function StudentsListPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Students"
-        description={`Manage enrollment, academics, and records for every student at ${school.name}.`}
-        actions={
+        description={role === 'parent' ? `View your child's academic records at ${school.name}.` : `Manage enrollment, academics, and records for every student at ${school.name}.`}
+        actions={canManageStudents ? (
           <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
             <DialogTrigger asChild>
               <Button>
@@ -186,7 +193,7 @@ export default function StudentsListPage() {
               </Form>
             </DialogContent>
           </Dialog>
-        }
+        ) : undefined}
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -239,13 +246,15 @@ export default function StudentsListPage() {
         }
       />
 
-      <ConfirmDeleteDialog
-        open={!!pendingDelete}
-        onOpenChange={(open) => !open && setPendingDelete(null)}
-        onConfirm={handleDelete}
-        title="Remove this student?"
-        description={pendingDelete ? `${pendingDelete.name} (${pendingDelete.admissionNo}) will be permanently removed from ${school.name}'s records.` : ''}
-      />
+      {canManageStudents && (
+        <ConfirmDeleteDialog
+          open={!!pendingDelete}
+          onOpenChange={(open) => !open && setPendingDelete(null)}
+          onConfirm={handleDelete}
+          title="Remove this student?"
+          description={pendingDelete ? `${pendingDelete.name} (${pendingDelete.admissionNo}) will be permanently removed from ${school.name}'s records.` : ''}
+        />
+      )}
     </div>
   )
 }

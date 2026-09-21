@@ -20,6 +20,8 @@ import { Input } from '@/components/ui/input'
 import { sleep } from '@/lib/utils'
 import type { Exam } from '@/types'
 import { useActiveSchool } from '@/hooks/use-active-school'
+import { useAuthStore } from '@/store/auth-store'
+import { students } from '@/mock/students'
 
 const examSchema = z.object({
   name: z.string().min(2, 'Exam name is required'),
@@ -32,19 +34,30 @@ type ExamValues = z.infer<typeof examSchema>
 
 export default function ExaminationsPage() {
   const school = useActiveSchool()
+  const role = useAuthStore((s) => s.role)
+  const personId = useAuthStore((s) => s.personId)
+  const canManageExams = role !== 'student' && role !== 'parent'
   const [exams, setExams] = useState<Exam[]>(mockExams)
   const [statusFilter, setStatusFilter] = useState('all')
   const [pendingDelete, setPendingDelete] = useState<Exam | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
 
-  const schoolExams = useMemo(() => exams.filter((e) => e.schoolId === school.id), [exams, school.id])
+  const studentClassId = useMemo(() => {
+    if (role !== 'student' || !personId) return null
+    return students.find((student) => student.id === personId && student.schoolId === school.id)?.classId ?? null
+  }, [personId, role, school.id])
+
+  const schoolExams = useMemo(
+    () => exams.filter((e) => e.schoolId === school.id && (role !== 'student' ? true : !!studentClassId && e.classId === studentClassId)),
+    [exams, role, school.id, studentClassId],
+  )
   const filtered = useMemo(() => schoolExams.filter((e) => statusFilter === 'all' || e.status === statusFilter), [schoolExams, statusFilter])
   const schoolClasses = useMemo(() => allClasses.filter((c) => c.schoolId === school.id), [school.id])
 
   const upcoming = schoolExams.filter((e) => e.status === 'upcoming').length
   const graded = schoolExams.filter((e) => e.status === 'graded').length
 
-  const columns = useMemo(() => getExamColumns((exam) => setPendingDelete(exam)), [])
+  const columns = useMemo(() => getExamColumns(canManageExams ? (exam) => setPendingDelete(exam) : undefined), [canManageExams])
 
   const form = useForm<ExamValues>({
     resolver: zodResolver(examSchema),
@@ -80,105 +93,109 @@ export default function ExaminationsPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Examinations"
-        description={`Plan, schedule, and manage examinations at ${school.name}.`}
+        description={role === 'student' ? `Your class examinations at ${school.name}.` : `Plan, schedule, and manage examinations at ${school.name}.`}
         actions={
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="size-4" /> Schedule Exam
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Schedule a new exam</DialogTitle>
-                <DialogDescription>Set up the exam basics — results can be entered once it's completed.</DialogDescription>
-              </DialogHeader>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Exam name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Mid Term" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="subjectId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Subject</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Select subject" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {subjects.map((s) => (
-                              <SelectItem key={s.id} value={s.id}>
-                                {s.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="classId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Class</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Select class" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {schoolClasses.map((c) => (
-                              <SelectItem key={c.id} value={c.id}>
-                                {c.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="date"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Date</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <DialogFooter>
-                    <Button type="submit" disabled={form.formState.isSubmitting}>
-                      {form.formState.isSubmitting && <Loader2 className="size-4 animate-spin" />}
-                      Schedule exam
+          !canManageExams
+            ? undefined
+            : (
+                <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <Plus className="size-4" /> Schedule Exam
                     </Button>
-                  </DialogFooter>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Schedule a new exam</DialogTitle>
+                      <DialogDescription>Set up the exam basics — results can be entered once it's completed.</DialogDescription>
+                    </DialogHeader>
+                    <Form {...form}>
+                      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
+                        <FormField
+                          control={form.control}
+                          name="name"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Exam name</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Mid Term" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="subjectId"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Subject</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Select subject" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {subjects.map((s) => (
+                                    <SelectItem key={s.id} value={s.id}>
+                                      {s.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="classId"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Class</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Select class" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {schoolClasses.map((c) => (
+                                    <SelectItem key={c.id} value={c.id}>
+                                      {c.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="date"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Date</FormLabel>
+                              <FormControl>
+                                <Input type="date" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <DialogFooter>
+                          <Button type="submit" disabled={form.formState.isSubmitting}>
+                            {form.formState.isSubmitting && <Loader2 className="size-4 animate-spin" />}
+                            Schedule exam
+                          </Button>
+                        </DialogFooter>
+                      </form>
+                    </Form>
+                  </DialogContent>
+                </Dialog>
+              )
         }
       />
 
@@ -215,14 +232,16 @@ export default function ExaminationsPage() {
         }
       />
 
-      <ConfirmDeleteDialog
-        open={!!pendingDelete}
-        onOpenChange={(open) => !open && setPendingDelete(null)}
-        onConfirm={handleDelete}
-        title="Cancel this exam?"
-        description={pendingDelete ? `${pendingDelete.name} will be permanently removed from the schedule.` : ''}
-        confirmLabel="Cancel exam"
-      />
+      {canManageExams && (
+        <ConfirmDeleteDialog
+          open={!!pendingDelete}
+          onOpenChange={(open) => !open && setPendingDelete(null)}
+          onConfirm={handleDelete}
+          title="Cancel this exam?"
+          description={pendingDelete ? `${pendingDelete.name} will be permanently removed from the schedule.` : ''}
+          confirmLabel="Cancel exam"
+        />
+      )}
     </div>
   )
 }

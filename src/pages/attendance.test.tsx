@@ -11,7 +11,7 @@ beforeEach(() => {
   localStorage.clear()
   usePermissionsStore.getState().resetToDefaults()
   useAuthStore.getState().logout()
-  useAuthStore.getState().loginAsRole('administrator')
+  useAuthStore.getState().loginAsRole('teacher')
 })
 
 const schoolId = () => useAuthStore.getState().schoolId!
@@ -21,7 +21,7 @@ function rosterFor(classId: string) {
 }
 
 describe('AttendancePage — rendering and stats', () => {
-  it('renders for administrator with all students marked present by default', () => {
+  it('renders for teachers with all students marked present by default', () => {
     render(<AttendancePage />)
     const schoolClasses = allClasses.filter((c) => c.schoolId === schoolId())
     const roster = rosterFor(schoolClasses[0].id)
@@ -65,5 +65,30 @@ describe('AttendancePage — class switcher', () => {
     expect(await screen.findByText('Class strength', { selector: 'p.text-muted-foreground' })).toBeInTheDocument()
     expect(screen.getByText('Class strength', { selector: 'p.text-muted-foreground' }).nextElementSibling).toHaveTextContent(String(nextRoster.length))
     expect(screen.getByText('Present today', { selector: 'p.text-muted-foreground' }).nextElementSibling).toHaveTextContent(String(nextRoster.length))
+  })
+})
+
+describe('AttendancePage — role restriction', () => {
+  it('shows a personal attendance report for students and hides the teacher editing section', async () => {
+    const user = userEvent.setup()
+    useAuthStore.getState().logout()
+    useAuthStore.getState().loginAsRole('student')
+    const { unmount } = render(<AttendancePage />)
+
+    expect(screen.getByText('Your attendance')).toBeInTheDocument()
+    expect(screen.queryByText('Mark attendance')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /save/i })).not.toBeInTheDocument()
+
+    unmount()
+    useAuthStore.getState().logout()
+    useAuthStore.getState().loginAsRole('teacher')
+    render(<AttendancePage />)
+
+    expect(screen.getByText('Mark attendance')).toBeInTheDocument()
+    const teacherButtons = document.querySelectorAll('button[title="Absent"]')
+    expect(Array.from(teacherButtons).some((button) => !button.hasAttribute('disabled'))).toBe(true)
+
+    await user.click(teacherButtons[0])
+    expect(screen.getByText('Absent today', { selector: 'p.text-muted-foreground' }).nextElementSibling).toHaveTextContent('1')
   })
 })

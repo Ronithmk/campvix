@@ -10,6 +10,8 @@ import { subjects } from '@/mock/subjects'
 import { teachers as allTeachers } from '@/mock/teachers'
 import { cn } from '@/lib/utils'
 import { useActiveSchool } from '@/hooks/use-active-school'
+import { useAuthStore } from '@/store/auth-store'
+import { students } from '@/mock/students'
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
 const PERIODS = ['08:30', '09:20', '10:10', '11:20', '12:10', '13:40', '02:30']
@@ -22,12 +24,19 @@ function hashCode(str: string) {
 
 export default function TimetablePage() {
   const school = useActiveSchool()
+  const role = useAuthStore((s) => s.role)
+  const personId = useAuthStore((s) => s.personId)
   const classes = useMemo(() => allClasses.filter((c) => c.schoolId === school.id), [school.id])
   const teachers = useMemo(() => allTeachers.filter((t) => t.schoolId === school.id), [school.id])
-  const [classId, setClassId] = useState(classes[0]?.id)
+  const studentClassId = useMemo(() => {
+    if (role !== 'student' || !personId) return null
+    return students.find((student) => student.id === personId && student.schoolId === school.id)?.classId ?? null
+  }, [personId, role, school.id])
+  const initialClassId = role === 'student' ? studentClassId : classes[0]?.id
+  const [classId, setClassId] = useState(initialClassId)
   const [regenSeed, setRegenSeed] = useState(0)
 
-  const activeClassId = classes.some((c) => c.id === classId) ? classId : classes[0]?.id
+  const activeClassId = role === 'student' ? studentClassId ?? initialClassId : classes.some((c) => c.id === classId) ? classId : classes[0]?.id
   const klass = classes.find((c) => c.id === activeClassId)
 
   const grid = useMemo(() => {
@@ -50,46 +59,64 @@ export default function TimetablePage() {
   }
 
   if (!klass) {
-    return <PageHeader title="Timetable" description="No classes found for this school yet." />
+    return <PageHeader title="Timetable" description={role === 'student' ? 'Your class timetable is not available yet.' : 'No classes found for this school yet.'} />
   }
 
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Timetable"
-        description={`Weekly class schedule builder for ${school.name}.`}
+        description={role === 'student' ? `Your class schedule for ${school.name}.` : `Weekly class schedule builder for ${school.name}.`}
         actions={
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => window.print()}>
-              <Printer className="size-4" /> Print
-            </Button>
-            <Button onClick={handleAutoGenerate}>
-              <Wand2 className="size-4" /> Auto-generate
-            </Button>
-          </div>
+          role === 'student'
+            ? undefined
+            : (
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => window.print()}>
+                    <Printer className="size-4" /> Print
+                  </Button>
+                  <Button onClick={handleAutoGenerate}>
+                    <Wand2 className="size-4" /> Auto-generate
+                  </Button>
+                </div>
+              )
         }
       />
 
-      <Card>
-        <CardContent className="flex flex-wrap items-center gap-3 pt-6 pb-6">
-          <span className="text-sm font-medium text-foreground">Class</span>
-          <Select value={activeClassId} onValueChange={setClassId}>
-            <SelectTrigger className="w-52">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {classes.map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <span className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
-            <CalendarClock className="size-3.5" /> Room {klass.room}
-          </span>
-        </CardContent>
-      </Card>
+      {!role || role !== 'student' ? (
+        <Card>
+          <CardContent className="flex flex-wrap items-center gap-3 pt-6 pb-6">
+            <span className="text-sm font-medium text-foreground">Class</span>
+            <Select value={activeClassId ?? undefined} onValueChange={setClassId}>
+              <SelectTrigger className="w-52">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {classes.map((c) => (
+                  <SelectItem key={c.id} value={c.id}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <span className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
+              <CalendarClock className="size-3.5" /> Room {klass.room}
+            </span>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardContent className="flex flex-wrap items-center gap-3 pt-6 pb-6">
+            <span className="text-sm font-medium text-foreground">Your class</span>
+            <span className="rounded-md border border-border bg-secondary/40 px-3 py-2 text-sm font-medium text-foreground">
+              {klass?.name}
+            </span>
+            <span className="ml-auto flex items-center gap-1.5 text-xs text-muted-foreground">
+              <CalendarClock className="size-3.5" /> Room {klass?.room}
+            </span>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">

@@ -12,15 +12,27 @@ import { results as mockResults } from '@/mock/exams'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import type { Result } from '@/types'
 import { useActiveSchool } from '@/hooks/use-active-school'
+import { useAuthStore } from '@/store/auth-store'
+import { students as allStudents } from '@/mock/students'
 
 const GRADE_ORDER = ['A+', 'A', 'B+', 'B', 'C+', 'C', 'D']
 
 export default function ResultsPage() {
   const school = useActiveSchool()
+  const role = useAuthStore((s) => s.role)
+  const personId = useAuthStore((s) => s.personId)
   const [results, setResults] = useState<Result[]>(mockResults)
   const [pendingDelete, setPendingDelete] = useState<Result | null>(null)
 
-  const schoolResults = useMemo(() => results.filter((r) => r.schoolId === school.id), [results, school.id])
+  const studentClassId = useMemo(() => {
+    if (role !== 'student' || !personId) return null
+    return allStudents.find((student) => student.id === personId && student.schoolId === school.id)?.classId ?? null
+  }, [personId, role, school.id])
+
+  const schoolResults = useMemo(
+    () => results.filter((r) => r.schoolId === school.id && (role !== 'student' || (!!personId && r.studentId === personId))),
+    [personId, results, role, school.id, studentClassId],
+  )
   const avgScore = schoolResults.length ? Math.round(schoolResults.reduce((sum, r) => sum + (r.marksObtained / r.maxMarks) * 100, 0) / schoolResults.length) : 0
   const topScorers = schoolResults.filter((r) => r.marksObtained / r.maxMarks >= 0.9).length
 
@@ -30,7 +42,7 @@ export default function ResultsPage() {
     return GRADE_ORDER.map((grade) => ({ grade, count: counts.get(grade) ?? 0 }))
   }, [schoolResults])
 
-  const columns = useMemo(() => getResultColumns((result) => setPendingDelete(result)), [])
+  const columns = useMemo(() => getResultColumns(role === 'student' ? undefined : (result) => setPendingDelete(result)), [role])
 
   function handleDelete() {
     if (!pendingDelete) return
@@ -41,7 +53,7 @@ export default function ResultsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <PageHeader title="Results" description={`Review grades and performance across every examination at ${school.name}.`} />
+      <PageHeader title="Results" description={role === 'student' ? `Your academic results at ${school.name}.` : `Review grades and performance across every examination at ${school.name}.`} />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard index={0} label="Results Recorded" value={String(schoolResults.length)} icon={Award} accent="primary" change={0} />
@@ -80,7 +92,9 @@ export default function ResultsPage() {
         }}
       />
 
-      <ConfirmDeleteDialog open={!!pendingDelete} onOpenChange={(open) => !open && setPendingDelete(null)} onConfirm={handleDelete} title="Delete this result?" description="This result entry will be permanently deleted." />
+      {role !== 'student' && (
+        <ConfirmDeleteDialog open={!!pendingDelete} onOpenChange={(open) => !open && setPendingDelete(null)} onConfirm={handleDelete} title="Delete this result?" description="This result entry will be permanently deleted." />
+      )}
     </div>
   )
 }

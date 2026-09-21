@@ -23,6 +23,8 @@ import { teachers } from '@/mock/teachers'
 import { formatDate, sleep } from '@/lib/utils'
 import type { Assignment } from '@/types'
 import { useActiveSchool } from '@/hooks/use-active-school'
+import { useAuthStore } from '@/store/auth-store'
+import { students } from '@/mock/students'
 
 const assignmentSchema = z.object({
   title: z.string().min(2, 'Title is required'),
@@ -35,11 +37,24 @@ type AssignmentValues = z.infer<typeof assignmentSchema>
 
 export default function AssignmentsPage() {
   const school = useActiveSchool()
+  const role = useAuthStore((s) => s.role)
+  const personId = useAuthStore((s) => s.personId)
   const [assignments, setAssignments] = useState<Assignment[]>(mockAssignments)
   const [statusFilter, setStatusFilter] = useState('all')
   const [dialogOpen, setDialogOpen] = useState(false)
 
-  const schoolAssignments = useMemo(() => assignments.filter((a) => a.schoolId === school.id), [assignments, school.id])
+  const studentClassId = useMemo(() => {
+    if (role !== 'student' || !personId) return null
+    return students.find((student) => student.id === personId && student.schoolId === school.id)?.classId ?? null
+  }, [personId, role, school.id])
+
+  const schoolAssignments = useMemo(
+    () => assignments.filter((a) =>
+      a.schoolId === school.id &&
+      (role !== 'student' ? true : !!studentClassId && a.classId === studentClassId && a.status !== 'draft'),
+    ),
+    [assignments, role, school.id, studentClassId],
+  )
   const filtered = useMemo(() => schoolAssignments.filter((a) => statusFilter === 'all' || a.status === statusFilter), [schoolAssignments, statusFilter])
   const schoolClasses = useMemo(() => classes.filter((c) => c.schoolId === school.id), [school.id])
   const schoolTeachers = useMemo(() => teachers.filter((t) => t.schoolId === school.id), [school.id])
@@ -88,105 +103,109 @@ export default function AssignmentsPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Assignments"
-        description={`Create, distribute, and grade assignments at ${school.name}.`}
+        description={role === 'student' ? `Your assignments for ${school.name}.` : `Create, distribute, and grade assignments at ${school.name}.`}
         actions={
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="size-4" /> New Assignment
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Create a new assignment</DialogTitle>
-                <DialogDescription>Set up the assignment — you can publish it once it's ready.</DialogDescription>
-              </DialogHeader>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
-                  <FormField
-                    control={form.control}
-                    name="title"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Title</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Algebra Problem Set" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="subjectId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Subject</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Select subject" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {subjects.map((s) => (
-                              <SelectItem key={s.id} value={s.id}>
-                                {s.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="classId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Class</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Select class" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {schoolClasses.map((c) => (
-                              <SelectItem key={c.id} value={c.id}>
-                                {c.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="dueDate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Due date</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <DialogFooter>
-                    <Button type="submit" disabled={form.formState.isSubmitting}>
-                      {form.formState.isSubmitting && <Loader2 className="size-4 animate-spin" />}
-                      Create assignment
+          role === 'student'
+            ? undefined
+            : (
+                <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <Plus className="size-4" /> New Assignment
                     </Button>
-                  </DialogFooter>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Create a new assignment</DialogTitle>
+                      <DialogDescription>Set up the assignment — you can publish it once it's ready.</DialogDescription>
+                    </DialogHeader>
+                    <Form {...form}>
+                      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
+                        <FormField
+                          control={form.control}
+                          name="title"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Title</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Algebra Problem Set" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="subjectId"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Subject</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Select subject" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {subjects.map((s) => (
+                                    <SelectItem key={s.id} value={s.id}>
+                                      {s.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="classId"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Class</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Select class" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {schoolClasses.map((c) => (
+                                    <SelectItem key={c.id} value={c.id}>
+                                      {c.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="dueDate"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Due date</FormLabel>
+                              <FormControl>
+                                <Input type="date" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <DialogFooter>
+                          <Button type="submit" disabled={form.formState.isSubmitting}>
+                            {form.formState.isSubmitting && <Loader2 className="size-4 animate-spin" />}
+                            Create assignment
+                          </Button>
+                        </DialogFooter>
+                      </form>
+                    </Form>
+                  </DialogContent>
+                </Dialog>
+              )
         }
       />
 
@@ -226,14 +245,16 @@ export default function AssignmentsPage() {
                       {subject?.name} &middot; {klass?.name}
                     </p>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <StatusBadge status={a.status} />
-                    <DeleteConfirm title="Delete this assignment?" description={`${a.title} will be permanently deleted.`} onConfirm={() => handleDelete(a.id, a.title)}>
-                      <Button variant="ghost" size="icon-sm" className="text-muted-foreground hover:text-destructive">
-                        <Trash2 className="size-3.5" />
-                      </Button>
-                    </DeleteConfirm>
-                  </div>
+                  {role !== 'student' && (
+                    <div className="flex items-center gap-1">
+                      <StatusBadge status={a.status} />
+                      <DeleteConfirm title="Delete this assignment?" description={`${a.title} will be permanently deleted.`} onConfirm={() => handleDelete(a.id, a.title)}>
+                        <Button variant="ghost" size="icon-sm" className="text-muted-foreground hover:text-destructive">
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </DeleteConfirm>
+                    </div>
+                  )}
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <div className="flex items-center justify-between text-xs text-muted-foreground">

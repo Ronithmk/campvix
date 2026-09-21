@@ -34,13 +34,16 @@ import { results, exams } from '@/mock/exams'
 import { attendanceRecords } from '@/mock/attendance'
 import { subjects } from '@/mock/subjects'
 import { formatCurrency, formatDate, initials } from '@/lib/utils'
+import { useAuthStore } from '@/store/auth-store'
 
 export default function StudentProfilePage() {
   const { studentId } = useParams()
   const navigate = useNavigate()
+  const role = useAuthStore((s) => s.role)
+  const personId = useAuthStore((s) => s.personId)
   const student = students.find((s) => s.id === studentId)
 
-  if (!student) {
+  if (!student || (role === 'parent' && (!personId || student.parentId !== personId))) {
     return <EmptyState icon={GraduationCap} title="Student not found" description="This student record doesn't exist or may have been removed." />
   }
 
@@ -73,26 +76,28 @@ export default function StudentProfilePage() {
               </p>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline">
-              <IdCard className="size-4" /> ID Card
-            </Button>
-            <Button>
-              <FileText className="size-4" /> Edit Profile
-            </Button>
-            <DeleteConfirm
-              title="Remove this student?"
-              description={`${student.name} (${student.admissionNo}) will be permanently removed from the school's records.`}
-              onConfirm={() => {
-                toast.success(`${student.name} was removed`)
-                navigate('/app/students')
-              }}
-            >
-              <Button variant="destructive" size="icon" aria-label="Remove student">
-                <Trash2 className="size-4" />
+          {role !== 'parent' && (
+            <div className="flex gap-2">
+              <Button variant="outline">
+                <IdCard className="size-4" /> ID Card
               </Button>
-            </DeleteConfirm>
-          </div>
+              <Button>
+                <FileText className="size-4" /> Edit Profile
+              </Button>
+              <DeleteConfirm
+                title="Remove this student?"
+                description={`${student.name} (${student.admissionNo}) will be permanently removed from the school's records.`}
+                onConfirm={() => {
+                  toast.success(`${student.name} was removed`)
+                  navigate('/app/students')
+                }}
+              >
+                <Button variant="destructive" size="icon" aria-label="Remove student">
+                  <Trash2 className="size-4" />
+                </Button>
+              </DeleteConfirm>
+            </div>
+          )}
         </CardContent>
       </Card>
 

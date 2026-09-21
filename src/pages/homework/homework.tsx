@@ -21,6 +21,8 @@ import { subjects } from '@/mock/subjects'
 import { formatDate, sleep } from '@/lib/utils'
 import type { HomeworkEntry } from '@/types'
 import { useActiveSchool } from '@/hooks/use-active-school'
+import { useAuthStore } from '@/store/auth-store'
+import { students } from '@/mock/students'
 
 const homeworkSchema = z.object({
   title: z.string().min(2, 'Title is required'),
@@ -34,10 +36,20 @@ type HomeworkValues = z.infer<typeof homeworkSchema>
 
 export default function HomeworkPage() {
   const school = useActiveSchool()
+  const role = useAuthStore((s) => s.role)
+  const personId = useAuthStore((s) => s.personId)
   const [homeworkEntries, setHomeworkEntries] = useState<HomeworkEntry[]>(mockHomework)
   const [dialogOpen, setDialogOpen] = useState(false)
 
-  const schoolHomework = useMemo(() => homeworkEntries.filter((h) => h.schoolId === school.id), [homeworkEntries, school.id])
+  const studentClassId = useMemo(() => {
+    if (role !== 'student' || !personId) return null
+    return students.find((student) => student.id === personId && student.schoolId === school.id)?.classId ?? null
+  }, [personId, role, school.id])
+
+  const schoolHomework = useMemo(
+    () => homeworkEntries.filter((h) => h.schoolId === school.id && (role !== 'student' ? true : !!studentClassId && h.classId === studentClassId)),
+    [homeworkEntries, role, school.id, studentClassId],
+  )
   const schoolClasses = useMemo(() => classes.filter((c) => c.schoolId === school.id), [school.id])
   const avgCompletion = schoolHomework.length ? Math.round(schoolHomework.reduce((sum, h) => sum + h.completionPercent, 0) / schoolHomework.length) : 0
   const dueToday = schoolHomework.filter((h) => new Date(h.date).toDateString() === new Date().toDateString()).length
@@ -74,118 +86,122 @@ export default function HomeworkPage() {
     <div className="flex flex-col gap-6">
       <PageHeader
         title="Homework"
-        description={`Daily homework diary tracked across every class at ${school.name}.`}
+        description={role === 'student' ? `Your homework for ${school.name}.` : `Daily homework diary tracked across every class at ${school.name}.`}
         actions={
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="size-4" /> Assign Homework
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Assign new homework</DialogTitle>
-                <DialogDescription>Add a homework entry to the diary for a class.</DialogDescription>
-              </DialogHeader>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
-                  <FormField
-                    control={form.control}
-                    name="title"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Title</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Read Chapter 3 and summarize" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Description</FormLabel>
-                        <FormControl>
-                          <Textarea placeholder="Details for students and parents" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="subjectId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Subject</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Select subject" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {subjects.map((s) => (
-                              <SelectItem key={s.id} value={s.id}>
-                                {s.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="classId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Class</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger className="w-full">
-                              <SelectValue placeholder="Select class" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {schoolClasses.map((c) => (
-                              <SelectItem key={c.id} value={c.id}>
-                                {c.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="date"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Date</FormLabel>
-                        <FormControl>
-                          <Input type="date" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <DialogFooter>
-                    <Button type="submit" disabled={form.formState.isSubmitting}>
-                      {form.formState.isSubmitting && <Loader2 className="size-4 animate-spin" />}
-                      Assign homework
+          role === 'student'
+            ? undefined
+            : (
+                <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <Plus className="size-4" /> Assign Homework
                     </Button>
-                  </DialogFooter>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Assign new homework</DialogTitle>
+                      <DialogDescription>Add a homework entry to the diary for a class.</DialogDescription>
+                    </DialogHeader>
+                    <Form {...form}>
+                      <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
+                        <FormField
+                          control={form.control}
+                          name="title"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Title</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Read Chapter 3 and summarize" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="description"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Description</FormLabel>
+                              <FormControl>
+                                <Textarea placeholder="Details for students and parents" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="subjectId"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Subject</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Select subject" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {subjects.map((s) => (
+                                    <SelectItem key={s.id} value={s.id}>
+                                      {s.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="classId"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Class</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger className="w-full">
+                                    <SelectValue placeholder="Select class" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {schoolClasses.map((c) => (
+                                    <SelectItem key={c.id} value={c.id}>
+                                      {c.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="date"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Date</FormLabel>
+                              <FormControl>
+                                <Input type="date" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <DialogFooter>
+                          <Button type="submit" disabled={form.formState.isSubmitting}>
+                            {form.formState.isSubmitting && <Loader2 className="size-4 animate-spin" />}
+                            Assign homework
+                          </Button>
+                        </DialogFooter>
+                      </form>
+                    </Form>
+                  </DialogContent>
+                </Dialog>
+              )
         }
       />
 
@@ -215,11 +231,13 @@ export default function HomeworkPage() {
                   <Progress value={h.completionPercent} className="h-1.5" />
                   <span className="w-9 shrink-0 text-right text-xs font-medium text-foreground">{h.completionPercent}%</span>
                 </div>
-                <DeleteConfirm title="Delete this homework entry?" description={`${h.title} will be permanently deleted.`} onConfirm={() => handleDelete(h.id, h.title)}>
-                  <Button variant="ghost" size="icon-sm" className="shrink-0 text-muted-foreground hover:text-destructive">
-                    <Trash2 className="size-3.5" />
-                  </Button>
-                </DeleteConfirm>
+                {role !== 'student' && (
+                  <DeleteConfirm title="Delete this homework entry?" description={`${h.title} will be permanently deleted.`} onConfirm={() => handleDelete(h.id, h.title)}>
+                    <Button variant="ghost" size="icon-sm" className="shrink-0 text-muted-foreground hover:text-destructive">
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </DeleteConfirm>
+                )}
               </CardContent>
             </Card>
           )

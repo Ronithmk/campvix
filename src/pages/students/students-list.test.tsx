@@ -45,6 +45,18 @@ describe('StudentsListPage — rendering and stats', () => {
     expect(screen.getByText('Overdue Fees', { selector: 'p.text-muted-foreground' }).nextElementSibling).toHaveTextContent(formatNumber(overdue))
     expect(screen.getByText('Avg. Attendance', { selector: 'p.text-muted-foreground' }).nextElementSibling).toHaveTextContent(`${avgAttendance}%`)
   })
+
+  it('shows only the linked child and hides management controls for parents', () => {
+    useAuthStore.getState().logout()
+    useAuthStore.getState().loginAsRole('parent')
+    renderPage()
+
+    const parentId = useAuthStore.getState().personId
+    const children = mockStudents.filter((student) => student.schoolId === schoolId() && student.parentId === parentId)
+    expect(screen.getByText('Total Students', { selector: 'p.text-muted-foreground' }).nextElementSibling).toHaveTextContent(formatNumber(children.length))
+    expect(screen.queryByRole('button', { name: /add student/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /select all/i })).not.toBeInTheDocument()
+  })
 })
 
 describe('StudentsListPage — filters', () => {

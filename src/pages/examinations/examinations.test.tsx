@@ -34,6 +34,15 @@ describe('ExaminationsPage — rendering and stats', () => {
     expect(screen.getByText('Upcoming', { selector: 'p.text-muted-foreground' }).nextElementSibling).toHaveTextContent(String(upcoming))
     expect(screen.getByText('Graded', { selector: 'p.text-muted-foreground' }).nextElementSibling).toHaveTextContent(String(graded))
   })
+
+  it('keeps parent access read-only', () => {
+    useAuthStore.getState().logout()
+    useAuthStore.getState().loginAsRole('parent')
+    render(<ExaminationsPage />)
+
+    expect(screen.queryByRole('button', { name: /schedule exam/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /more/i })).not.toBeInTheDocument()
+  })
 })
 
 describe('ExaminationsPage — filter', () => {
