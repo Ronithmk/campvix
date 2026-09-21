@@ -55,10 +55,6 @@ export default function DashboardPage() {
   const school = useActiveSchool()
   const { role, personId, name: userName } = useAuthStore()
 
-  if (role === 'student' && personId) return <StudentDashboard personId={personId} name={userName} school={school} />
-  if (role === 'teacher' && personId) return <TeacherDashboard personId={personId} name={userName} school={school} />
-  if (role === 'parent' && personId) return <ParentDashboard personId={personId} name={userName} school={school} />
-
   const schoolStudents = useMemo(() => students.filter((s) => s.schoolId === school.id), [school.id])
   const schoolTeachers = useMemo(() => teachers.filter((t) => t.schoolId === school.id), [school.id])
   const schoolFeeRecords = useMemo(() => feeRecords.filter((f) => f.schoolId === school.id), [school.id])
@@ -103,6 +99,10 @@ export default function DashboardPage() {
     time: ['09:00 AM', '10:15 AM', '11:30 AM', '01:00 PM'][i],
     teacher: schoolTeachers.find((t) => t.id === c.classTeacherId)?.name ?? 'Staff',
   }))
+
+  if (role === 'student' && personId) return <StudentDashboard personId={personId} name={userName} school={school} />
+  if (role === 'teacher' && personId) return <TeacherDashboard personId={personId} name={userName} school={school} />
+  if (role === 'parent' && personId) return <ParentDashboard personId={personId} name={userName} school={school} />
 
   return (
     <div className="flex flex-col gap-6">

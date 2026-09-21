@@ -1,4 +1,5 @@
 import { toast } from 'sonner'
+import { Link } from 'react-router-dom'
 import { Building2, Check, ChevronsUpDown, Plus } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useAuthStore } from '@/store/auth-store'
@@ -58,8 +59,10 @@ export function SchoolSwitcher({ collapsed = false }: { collapsed?: boolean }) {
           </DropdownMenuItem>
         ))}
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => toast.info('Add school flow coming soon')}>
-          <Plus /> Add a school
+        <DropdownMenuItem asChild>
+          <Link to="/app/settings/schools">
+            <Plus /> Add a school
+          </Link>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
